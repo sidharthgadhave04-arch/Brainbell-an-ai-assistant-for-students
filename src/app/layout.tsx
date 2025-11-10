@@ -3,10 +3,7 @@ import { Inter, Lexend } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
-import { PostHogProvider } from '@/components/posthog-provider';
 import dynamic from "next/dynamic";
-
-const PostHogPageView = dynamic(() => import('@/components/PostHogPageView'), { ssr: false });
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,22 +18,22 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "Mind Mentor - Your AI Study Assistant",
+  title: "BrainWell : an ai assistant for students",
   description: "Accelerate your learning with AI-powered study plans and resources",
   openGraph: {
     url: 'https://www.mind-mentor.ink/',
-    siteName: 'Mind Mentor - Your AI Study Assistant',
+    siteName: 'BrainWell : an ai assistant for students',
     locale: 'en_US',
     type: 'website',
     images: [{
       url: 'https://www.mind-mentor.ink/thumbnail.png',
       width: 1200,
       height: 630,
-      alt: 'Mind Mentor - Your AI Study Assistant'
+      alt: 'BrainWell : an ai assistant for students'
     }],
   },
   twitter: {
-    title: "Mind Mentor - Your AI Study Assistant",
+    title: "BrainWell : an ai assistant for students",
     description: "Accelerate your learning with AI-powered study plans and resources",
     images: 'https://www.mind-mentor.ink/thumbnail.png',
   }
@@ -53,11 +50,8 @@ export default function RootLayout({
         className={`${inter.variable} ${lexend.variable} font-sans antialiased min-h-screen bg--background`}
       >
         <NextAuthProvider>
-          <PostHogProvider>
-            <PostHogPageView />
             {children}
             <Toaster />
-          </PostHogProvider>
         </NextAuthProvider>
       </body>
     </html>

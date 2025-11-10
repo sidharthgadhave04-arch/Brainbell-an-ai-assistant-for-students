@@ -25,9 +25,11 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.log("Error during registration: ", error);
+    console.error("Error during registration:", error);
+    const message = error instanceof Error ? error.message : 'An error occurred while registering the user';
+    // Avoid leaking sensitive details in production; this is helpful for local debugging.
     return NextResponse.json(
-      { message: "An error occurred while registering the user" },
+      { message },
       { status: 500 }
     );
   }

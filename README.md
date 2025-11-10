@@ -1,4 +1,4 @@
-# Mind Mentor: AI-Powered Study Assistant 
+# BrainWell : an ai assistant for students
 
 ## Table of Contents
 - [Overview](#overview)
@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/1ea26947-1dca-408d-9741-b24c3429944a
 
 ## Overview
 
-Mind Mentor is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, and interactive assistance to help students achieve their academic goals efficiently.
+BrainWell is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, and interactive assistance to help students achieve their academic goals efficiently.
 
 ## Key Features
 
@@ -122,8 +122,6 @@ NEXTAUTH_SECRET=your-secret-key
 MONGODB_URI=your-mongodb-uri
 NEXTAUTH_URL=http://localhost:3000
 EXPRESS_BACKEND_URL=http://backend:8000
-NEXT_PUBLIC_POSTHOG_KEY=your-posthog-key
-NEXT_PUBLIC_POSTHOG_HOST=your-posthog-host
 NEXT_PUBLIC_API_URL=http://backend:8000
 API_URL=http://backend:8000
 GROQ_API_KEY=your-groq-api-key

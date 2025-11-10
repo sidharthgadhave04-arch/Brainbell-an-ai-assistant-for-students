@@ -61,7 +61,7 @@ export function Header() {
               <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#c1ff72] rounded-sm flex items-center justify-center border-2 border-b-3 border-r-3 border-black">
                 <span className="text-black text-base sm:text-xl">🎓</span>
               </div>
-              <span className="font-semibold text-sm sm:text-base">Mind Mentor</span>
+              <span className="font-semibold text-sm sm:text-base">BrainWell</span>
             </Link>
           </div>
 

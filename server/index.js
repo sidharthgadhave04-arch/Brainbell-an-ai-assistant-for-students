@@ -64,22 +64,32 @@ app.use('/api/study-plan', aiRateLimiter);
 
 // Basic health check
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Mind Mentor API is running' });
+  res.status(200).json({ status: 'ok', message: 'BrainWell API is running' });
 });
 
 // Lightweight health check for Docker (no embeddings)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
-    message: 'Mind Mentor API is running',
+    message: 'BrainWell API is running',
     timestamp: new Date().toISOString()
   });
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
+// Connect to MongoDB (validate env var first)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('MONGODB_URI environment variable is not set. Exiting.');
+  process.exit(1);
+}
+
+mongoose.connect(MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    // Exit the process; the backend cannot operate without DB
+    process.exit(1);
+  });
 
 // Apply routes directly without auth middleware
 app.use('/generate-plan', generatePlanRouter);
