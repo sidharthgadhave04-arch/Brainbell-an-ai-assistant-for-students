@@ -4,7 +4,6 @@ const nextConfig = {
     config.resolve.alias.canvas = false;
     return config;
   },
-  output: "standalone",
   images: {
     domains: ["avatars.githubusercontent.com", "lh3.googleusercontent.com"],
   },
