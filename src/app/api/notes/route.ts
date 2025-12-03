@@ -76,16 +76,27 @@ export async function POST(req: Request) {
     return NextResponse.json(note);
   } catch (error) {
     console.error("=== ERROR CREATING NOTE ===");
-    console.error("Error type:", error.constructor.name);
-    console.error("Error message:", error.message);
-    console.error("Full error:", error);
-    if (error.stack) {
-      console.error("Stack trace:", error.stack);
+
+    if (error instanceof Error) {
+      console.error("Error type:", error.constructor.name);
+      console.error("Error message:", error.message);
+      console.error("Full error:", error);
+      if (error.stack) {
+        console.error("Stack trace:", error.stack);
+      }
+      
+      return NextResponse.json(
+        { error: "Failed to create note", details: error.message },
+        { status: 500 }
+      );
+    } else {
+      // handle non-Error throwables (string, object, etc.)
+      console.error("Full error (unknown type):", error);
+      
+      return NextResponse.json(
+        { error: "Failed to create note", details: "Unknown error occurred" },
+        { status: 500 }
+      );
     }
-    
-    return NextResponse.json(
-      { error: "Failed to create note", details: error.message },
-      { status: 500 }
-    );
   }
 }
