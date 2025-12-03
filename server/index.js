@@ -64,14 +64,14 @@ app.use('/api/study-plan', aiRateLimiter);
 
 // Basic health check
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'BrainWell API is running' });
+  res.status(200).json({ status: 'ok', message: 'Brainbell API is running' });
 });
 
 // Lightweight health check for Docker (no embeddings)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
-    message: 'BrainWell API is running',
+    message: 'Brainbell API is running',
     timestamp: new Date().toISOString()
   });
 });
