@@ -45,7 +45,6 @@ export class NotificationManager {
       tag: 'study-plan-reminder',
       requireInteraction: true,
       silent: false, // This ensures browser's native sound plays
-      vibrate: [200, 100, 200], // Vibration pattern for mobile
     });
 
     notification.onclick = () => {
