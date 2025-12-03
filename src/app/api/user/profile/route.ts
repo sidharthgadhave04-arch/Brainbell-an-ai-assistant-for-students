@@ -1,64 +1,76 @@
+// app/api/user/profile/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/user";
 import { authOptions } from "@/lib/auth";
 
-// Define expected request body type
 interface UpdateProfileRequest {
-  name: string;
-  // Add other fields you want to make updatable
+  name?: string;
+  branch?: string;
+  division?: string;
+  college?: string;
   bio?: string;
   timezone?: string;
 }
 
 export async function PUT(req: Request) {
   try {
-    // 1. Validate Authentication
+    console.log("=== Profile Update Started ===");
+    
     const session = await getServerSession(authOptions);
+    console.log("Session:", session?.user?.id ? "Valid" : "Invalid", session?.user?.id);
+    
     if (!session?.user?.id) {
+      console.log("Authentication failed - no session");
       return NextResponse.json(
         { message: "You must be logged in to update your profile" },
         { status: 401 }
       );
     }
 
-    // 2. Get and validate request data
     const data = await req.json() as UpdateProfileRequest;
-    if (!data.name?.trim()) {
-      return NextResponse.json(
-        { message: "Name is required" },
-        { status: 400 }
-      );
-    }
+    console.log("Request data:", data);
 
-    // 3. Connect to database
+    console.log("Connecting to MongoDB...");
     await connectMongoDB();
+    console.log("MongoDB connected");
 
-    // 4. Find and update user
+    console.log("Finding user with ID:", session.user.id);
     const user = await User.findById(session.user.id);
+    console.log("User found:", user ? "Yes" : "No");
+    
     if (!user) {
+      console.log("User not found in database");
       return NextResponse.json(
         { message: "User not found" },
         { status: 404 }
       );
     }
 
-    // 5. Update user fields
-    user.name = data.name.trim();
-    if (data.bio) user.bio = data.bio.trim();
-    if (data.timezone) user.timezone = data.timezone;
+    console.log("Updating user fields...");
+    // Allow updating name, branch, division, college, bio, and timezone
+    // Email remains fixed from registration
+    if (data.name !== undefined) user.name = data.name.trim();
+    if (data.branch !== undefined) user.branch = data.branch.trim();
+    if (data.division !== undefined) user.division = data.division.trim();
+    if (data.college !== undefined) user.college = data.college.trim();
+    if (data.bio !== undefined) user.bio = data.bio.trim();
+    if (data.timezone !== undefined) user.timezone = data.timezone;
 
-    // 6. Save changes
+    console.log("Saving user...");
     await user.save();
+    console.log("User saved successfully");
 
-    // 7. Return updated user data
     return NextResponse.json({
       message: "Profile updated successfully",
       user: {
         id: user._id.toString(),
         name: user.name,
         email: user.email,
+        branch: user.branch,
+        division: user.division,
+        college: user.college,
         bio: user.bio,
         timezone: user.timezone,
         updatedAt: user.updatedAt
@@ -66,18 +78,30 @@ export async function PUT(req: Request) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error("Profile update error:", error);
+    console.error("=== Profile Update Error ===");
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error instanceof Error ? error.message : error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    console.error("Full error:", JSON.stringify(error, null, 2));
+    
     return NextResponse.json(
-      { message: "Failed to update profile" },
+      { 
+        message: "Failed to update profile",
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: process.env.NODE_ENV === 'development' ? error : undefined
+      },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint to fetch profile data
 export async function GET() {
   try {
+    console.log("=== Profile Fetch Started ===");
+    
     const session = await getServerSession(authOptions);
+    console.log("Session:", session?.user?.id ? "Valid" : "Invalid");
+    
     if (!session?.user?.id) {
       return NextResponse.json(
         { message: "Unauthorized" },
@@ -85,8 +109,13 @@ export async function GET() {
       );
     }
 
+    console.log("Connecting to MongoDB...");
     await connectMongoDB();
+    console.log("MongoDB connected");
+    
+    console.log("Finding user:", session.user.id);
     const user = await User.findById(session.user.id);
+    console.log("User found:", user ? "Yes" : "No");
     
     if (!user) {
       return NextResponse.json(
@@ -95,23 +124,29 @@ export async function GET() {
       );
     }
 
+    // Return data directly without nesting in 'user' object
     return NextResponse.json({
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        bio: user.bio,
-        timezone: user.timezone,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      branch: user.branch,
+      division: user.division,
+      college: user.college || 'ARMY INSTITUTE OF TECHNOLOGY DIGHI HILLS, PUNE 411015',
+      bio: user.bio,
+      timezone: user.timezone,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     });
 
   } catch (error) {
-    console.error("Profile fetch error:", error);
+    console.error("=== Profile Fetch Error ===");
+    console.error("Error:", error);
     return NextResponse.json(
-      { message: "Failed to fetch profile" },
+      { 
+        message: "Failed to fetch profile",
+        error: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
-} 
+}

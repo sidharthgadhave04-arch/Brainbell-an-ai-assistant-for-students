@@ -5,17 +5,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
-import { Loader2} from "lucide-react"
+import { useState, useEffect } from "react"
+import { Loader2 } from "lucide-react"
 
 export default function ProfilePage() {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const [loading, setLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
-    name: session?.user?.name || '',
-    email: session?.user?.email || '',
+    name: '',
+    email: '',
+    branch: '',
+    division: '',
   })
+
+  const branches = [
+    "Computer Engineering",
+    "Information Technology Engineering",
+    "Electronics and Telecommunication",
+    "Mechanical Engineering",
+    "Automation and Robotics Engineering"
+  ]
+
+  const divisions = ["A", "B"]
+
+  // Fetch user profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/user/profile')
+        if (response.ok) {
+          const data = await response.json()
+          setFormData({
+            name: data.name || '',
+            email: data.email || '',
+            branch: data.branch || '',
+            division: data.division || '',
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err)
+      }
+    }
+
+    if (session?.user) {
+      fetchProfile()
+    }
+  }, [session])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +70,8 @@ export default function ProfilePage() {
         throw new Error('Failed to update profile')
       }
 
+      // Update session data
+      await update()
       setIsEditing(false)
     } catch (err) {
       console.error('Error updating profile:', err)
@@ -52,11 +90,11 @@ export default function ProfilePage() {
                 src={session?.user?.image || "/images/default-avatar.png"}
                 alt={session?.user?.name || "User"}
               />
-              <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+              <AvatarFallback>{formData.name?.[0] || "U"}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl">{session?.user?.name}</h1>
-              <p className="text-sm text-gray-500">{session?.user?.email}</p>
+              <h1 className="text-2xl">{formData.name}</h1>
+              <p className="text-sm text-gray-500">{formData.email}</p>
             </div>
           </CardTitle>
         </CardHeader>
@@ -83,6 +121,38 @@ export default function ProfilePage() {
                   disabled
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium">Branch</label>
+                <select
+                  name="branch"
+                  value={formData.branch}
+                  onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                  className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1"
+                >
+                  <option value="">Select Branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Division</label>
+                <select
+                  name="division"
+                  value={formData.division}
+                  onChange={(e) => setFormData({ ...formData, division: e.target.value })}
+                  className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1"
+                >
+                  <option value="">Select Division</option>
+                  {divisions.map((division) => (
+                    <option key={division} value={division}>
+                      Division {division}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex gap-2">
                 <Button type="submit" disabled={loading}>
                   {loading ? (
@@ -104,10 +174,30 @@ export default function ProfilePage() {
               </div>
             </form>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Name</p>
+                  <p className="text-base font-medium">{formData.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <p className="text-base font-medium">{formData.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Branch</p>
+                  <p className="text-base font-medium">{formData.branch || 'Not set'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Division</p>
+                  <p className="text-base font-medium">{formData.division ? `Division ${formData.division}` : 'Not set'}</p>
+                </div>
+              </div>
+              <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            </div>
           )}
         </CardContent>
       </Card>
     </div>
   )
-} 
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectMongoDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/mongodb";
 import StudyStats from "@/models/studyStats";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
+    await connectDB();
     const studyStats = await StudyStats.findOne({ userId: session.user.id });
     
     if (!studyStats) {

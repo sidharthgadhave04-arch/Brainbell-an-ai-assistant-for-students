@@ -1,226 +1,196 @@
-'use client';
-
-import { useState, useEffect, useMemo } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import { useSession } from "next-auth/react";
-import PdfViewer from './PdfViewer';
-import ChatInterface from './ChatInterface';
-import PacmanLoader from 'react-spinners/PacmanLoader';
-import { Button } from "@/components/ui/button";
-import { FileText, MessageSquare } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface Source {
-  page: number;
-  content: string;
-}
+// components/PdfChat.tsx
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, User } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sourcePages: number[];
-  sources?: Source[];
-  timestamp: Date;
-  _id: string;
-}
-
-// Interface for the raw message data from the server
-interface ServerMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  sourcePages: number[];
-  sources?: Source[];
-  timestamp: string;
-  _id: string;
 }
 
 interface PdfChatProps {
-  documentId: string;
+  documentId?: string;
 }
 
-export default function PdfChat({ documentId }: PdfChatProps) {
-  const [currentPage, setCurrentPage] = useState<number>(1);
+const PdfChat: React.FC<PdfChatProps> = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'pdf' | 'chat'>('pdf');
-  const { toast } = useToast();
-  const { data: session } = useSession();
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Memoize PdfViewer to prevent re-renders when chat state changes
-  const memoizedPdfViewer = useMemo(() => (
-    <PdfViewer
-      documentId={documentId}
-      currentPage={currentPage}
-      onPageChange={setCurrentPage}
-    />
-  ), [documentId, currentPage]);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  // Load chat history
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const response = await fetch(`/api/pdf/${documentId}/history`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'x-user-id': session?.user?.id || '',
-          },
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to load chat history');
-        }
-        
-        const data = await response.json();
-        
-        // Check if data is an array (direct chat history)
-        if (Array.isArray(data)) {
-          const formattedHistory = data.map((msg: ServerMessage) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-            sourcePages: msg.sourcePages || [] // Ensure sourcePages is always an array
-          }));
-          setMessages(formattedHistory);
-        } else if (data && data.chatHistory) {
-          // Handle case where chat history is wrapped in an object
-          const formattedHistory = data.chatHistory.map((msg: ServerMessage) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-            sourcePages: msg.sourcePages || []
-          }));
-          setMessages(formattedHistory);
-        } else {
-          setMessages([]);
-        }
-      } catch (err) {
-        console.error('Error loading chat history:', err);
-        toast({
-          title: "Error",
-          description: err instanceof Error ? err.message : "Failed to load chat history",
-          variant: "destructive",
-        });
-        setMessages([]);
-      } finally {
-        setInitialLoading(false);
-      }
-    };
+    scrollToBottom();
+  }, [messages]);
 
-    if (session?.user?.id) {
-      loadHistory();
-    } else {
-      setInitialLoading(false);
-    }
-  }, [documentId, toast, session?.user?.id]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!input.trim()) return;
 
-  const handleSubmit = async (content: string) => {
-    if (!content.trim() || !session?.user?.id) return;
-
-    setLoading(true);
+    const userMessage = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/pdf/${documentId}/chat`, {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-user-id': session.user.id,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Scriba, a helpful and friendly AI assistant. You provide clear, concise, and accurate responses to help users with their questions.'
+            },
+            ...messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+          max_tokens: 1024
+        })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to get response');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        throw new Error(
+          errorData.error?.message || 
+          `API request failed: ${response.status}`
+        );
       }
 
       const data = await response.json();
+      console.log('API Response:', data);
       
-      const chatHistory = Array.isArray(data) ? data : data.chatHistory;
-      
-      if (chatHistory) {
-        const formattedHistory = chatHistory.map((msg: ServerMessage) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-          sourcePages: msg.sourcePages || []
-        }));
-        setMessages(formattedHistory);
-      } else {
-        console.error('Invalid chat response format:', data);
-        toast({
-          title: "Error",
-          description: "Received invalid response format from server",
-          variant: "destructive",
-        });
+      if (!data.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response format from API');
       }
-    } catch (err) {
-      console.error('Chat error:', err);
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to get response",
-        variant: "destructive",
-      });
+
+      const assistantMessage = data.choices[0].message.content;
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred';
+      
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ Error: ${errorMessage}\n\nPlease check:\n- Your API key is valid\n- You have internet connection\n- The API service is available` 
+      }]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (initialLoading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <PacmanLoader color="#538B81" />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-muted/10">
-      {/* Mobile View Selector */}
-      <div className="lg:hidden flex items-center justify-center gap-2 p-2 bg-background border-b">
-        <Button
-          variant={activeView === 'pdf' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveView('pdf')}
-          className="flex-1 max-w-[160px]"
-        >
-          <FileText className="h-4 w-4 mr-2" />
-          Document
-        </Button>
-        <Button
-          variant={activeView === 'chat' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveView('chat')}
-          className="flex-1 max-w-[160px]"
-        >
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Chat
-        </Button>
+    <div className="flex flex-col h-screen bg-[#E8E4D9]">
+      {/* Header */}
+      <div className="bg-[#4A6B5C] text-white p-6 shadow-lg">
+        <h1 className="text-3xl font-bold">Scriba</h1>
+        <p className="text-sm text-gray-200 mt-1">Your AI Assistant</p>
       </div>
 
-      {/* Content Area */}
-      <div className="flex flex-1 lg:gap-4 lg:p-4 overflow-hidden">
-        <div className={cn(
-          "lg:w-[55%] w-full transition-all duration-300",
-          activeView === 'pdf' ? 'block' : 'hidden lg:block'
-        )}>
-          {memoizedPdfViewer}
-        </div>
-        <div className={cn(
-          "lg:w-[45%] w-full transition-all duration-300",
-          activeView === 'chat' ? 'block' : 'hidden lg:block'
-        )}>
-          <ChatInterface
-            messages={messages}
-            loading={loading}
-            onSubmit={handleSubmit}
-          />
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 max-w-4xl w-full mx-auto">
+        <div className="space-y-4">
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-600 mt-20">
+              <Bot className="w-16 h-16 mx-auto mb-4 text-[#4A6B5C]" />
+              <h2 className="text-2xl font-semibold mb-2">Welcome to Scriba! 👋</h2>
+              <p>Ask me anything and I'll do my best to help you.</p>
+            </div>
+          ) : (
+            messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`flex gap-3 ${
+                  msg.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#4A6B5C] flex items-center justify-center">
+                      <Bot className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                )}
+                <div
+                  className={`max-w-[75%] p-4 rounded-lg shadow-md ${
+                    msg.role === 'user'
+                      ? 'bg-[#4A6B5C] text-white rounded-tr-none'
+                      : 'bg-white text-gray-800 rounded-tl-none'
+                  }`}
+                >
+                  <p className="font-semibold mb-1 text-sm">
+                    {msg.role === 'user' ? 'You' : 'Scriba'}
+                  </p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                </div>
+                {msg.role === 'user' && (
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                      <User className="w-6 h-6 text-gray-700" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          {isLoading && (
+            <div className="flex gap-3 justify-start">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-[#4A6B5C] flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="bg-white text-gray-800 p-4 rounded-lg rounded-tl-none shadow-md">
+                <p className="font-semibold mb-1 text-sm">Scriba</p>
+                <p className="text-gray-500">Thinking...</p>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      
+      {/* Input Area */}
+      <div className="border-t border-gray-300 bg-white p-4 shadow-lg">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message here..."
+              className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A6B5C] focus:border-transparent"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="px-6 py-3 bg-[#4A6B5C] text-white rounded-lg hover:bg-[#3d5a4d] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              <Send size={20} />
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
-} 
+};
+
+export default PdfChat;

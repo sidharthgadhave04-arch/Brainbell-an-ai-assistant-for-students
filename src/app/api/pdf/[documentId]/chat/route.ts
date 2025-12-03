@@ -1,70 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { getToken } from 'next-auth/jwt';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const apiUrl = process.env.API_URL || 'http://localhost:8000';
+const genAI = new GoogleGenerativeAI('AIzaSyDckN98ZyxB9WfAekINiy-pHxbBJyoAmxY');
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { documentId: string } }
-) {
+export async function POST(req: NextRequest) {
   try {
-    const headersList = headers();
-    const userId = headersList.get('x-user-id');
-    
-    if (!userId) {
+    const token = await getToken({ 
+      req,
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+
+    if (!token) {
       return NextResponse.json(
-        { error: 'Unauthorized - User ID is required' },
+        { error: 'Please sign in to use chat' },
         { status: 401 }
       );
     }
 
-    const { documentId } = params;
-    const body = await request.json();
+    const body = await req.json();
+    const { message, pdfContent, conversationHistory } = body;
 
-    // Create AbortController for timeout handling
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-
-    try {
-      const response = await fetch(`${apiUrl}/pdf/${documentId}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json();
-        return NextResponse.json(
-          { error: error.message || 'Failed to process chat request' },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      return NextResponse.json(data);
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return NextResponse.json(
-          { error: 'Request timeout - PDF processing is taking longer than expected. Please try again.' },
-          { status: 408 }
-        );
-      }
-      
-      throw fetchError;
+    if (!message) {
+      return NextResponse.json(
+        { error: 'Message is required' },
+        { status: 400 }
+      );
     }
-  } catch (error) {
-    console.error('Error in PDF chat:', error);
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    let prompt = `You are Scriba Assistant, an expert AI tutor specializing in engineering, mathematics, science, and academic problems. Provide clear, detailed explanations with step-by-step solutions.\n\n`;
+
+    if (pdfContent) {
+      prompt += `The user has uploaded a document. Content:\n\n${pdfContent.substring(0, 10000)}\n\n`;
+    }
+
+    if (conversationHistory && conversationHistory.length > 0) {
+      prompt += `Previous conversation:\n`;
+      conversationHistory.forEach((msg: any) => {
+        prompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+      });
+      prompt += `\n`;
+    }
+
+    prompt += `User: ${message}\nAssistant:`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const aiResponse = response.text();
+
+    return NextResponse.json({
+      success: true,
+      response: aiResponse,
+    });
+
+  } catch (error: any) {
+    console.error('Chat error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Failed to process message' },
       { status: 500 }
     );
   }
-} 
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { connectMongoDB } from "@/lib/mongodb";
+import connectDB from "@/lib/mongodb"; // CHANGED: was connectMongoDB
 import { authOptions } from "@/lib/auth";
 import Note from "@/models/note";
 
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const parentId = searchParams.get('parentId') || null;
 
-    await connectMongoDB();
+    await connectDB(); // CHANGED: was connectMongoDB
     
     const notes = await Note.find({
       userId: session.user.id,
@@ -36,16 +36,25 @@ export async function GET(req: Request) {
 // Create a new note
 export async function POST(req: Request) {
   try {
+    console.log("=== POST /api/notes called ===");
+    
     const session = await getServerSession(authOptions);
+    console.log("Session:", JSON.stringify(session, null, 2));
+    
     if (!session?.user?.id) {
+      console.log("No session or user ID found - Unauthorized");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const data = await req.json();
-    await connectMongoDB();
+    console.log("Data received:", JSON.stringify(data, null, 2));
+    
+    console.log("Attempting to connect to MongoDB...");
+    await connectDB(); // CHANGED: was connectMongoDB
+    console.log("MongoDB connected successfully");
 
     // Create note with proper content structure
-    const note = new Note({
+    const noteData = {
       userId: session.user.id,
       title: data.title || 'Untitled',
       content: [{
@@ -53,15 +62,30 @@ export async function POST(req: Request) {
         content: data.content || ''
       }],
       parentId: data.parentId || null
-    });
-
+    };
+    
+    console.log("Creating note with data:", JSON.stringify(noteData, null, 2));
+    
+    const note = new Note(noteData);
+    console.log("Note object created, attempting to save...");
+    
     await note.save();
+    console.log("Note saved successfully!");
+    console.log("Saved note:", JSON.stringify(note, null, 2));
+    
     return NextResponse.json(note);
   } catch (error) {
-    console.error("Error creating note:", error);
+    console.error("=== ERROR CREATING NOTE ===");
+    console.error("Error type:", error.constructor.name);
+    console.error("Error message:", error.message);
+    console.error("Full error:", error);
+    if (error.stack) {
+      console.error("Stack trace:", error.stack);
+    }
+    
     return NextResponse.json(
-      { error: "Failed to create note" },
+      { error: "Failed to create note", details: error.message },
       { status: 500 }
     );
   }
-} 
+}

@@ -1,22 +1,23 @@
-import { AuthOptions, DefaultSession } from "next-auth";
+import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { connectMongoDB } from "@/lib/mongodb";
+import connectDB from "@/lib/mongodb";
 import User from "@/models/user";
 import bcrypt from "bcryptjs";
 
-// Extend the built-in session types
 declare module "next-auth" {
   interface Session {
-    user: DefaultSession["user"] & {
+    user: {
       id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
     }
   }
 }
 
-// Extend JWT type
 declare module "next-auth/jwt" {
   interface JWT {
-    _id: string;
+    id: string;
   }
 }
 
@@ -30,21 +31,22 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Please enter email and password");
         }
 
-        try {
-          await connectMongoDB();
-          const user = await User.findOne({ email: credentials.email });
+          try {
+            await connectDB();
+          
+          const user = await User.findOne({ email: credentials.email.toLowerCase() }).lean();
 
           if (!user) {
-            return null;
+            throw new Error("Invalid credentials");
           }
 
           const passwordsMatch = await bcrypt.compare(credentials.password, user.password);
 
           if (!passwordsMatch) {
-            return null;
+            throw new Error("Invalid credentials");
           }
 
           return {
@@ -53,8 +55,8 @@ export const authOptions: AuthOptions = {
             email: user.email,
           };
         } catch (error) {
-          console.error("Error during authentication:", error);
-          return null;
+          console.error("Auth error:", error);
+          throw new Error("Authentication failed");
         }
       },
     }),
@@ -68,7 +70,7 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
+        session.user.id = token.id;
       }
       return session;
     },
@@ -78,7 +80,7 @@ export const authOptions: AuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

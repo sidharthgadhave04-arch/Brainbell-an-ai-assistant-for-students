@@ -1,143 +1,77 @@
-import mongoose from "mongoose";
+// models/user.ts
+import mongoose, { Schema, Model } from 'mongoose';
 
-// Define interfaces for type safety
-interface IStudyPlan {
-  subject: string;
-  duration: string;
-  examDate: Date;
-  weeklyPlans: Array<{
-    week: string;
-    goals: string[];
-    dailyTasks: Array<{
-      day: string;
-      tasks: string[];
-      duration: string;
-    }>;
-  }>;
-  recommendations: string[];
-  createdAt: Date;
-}
-
-interface IResource {
-  title: string;
-  description?: string;
-  type?: string;
-  link?: string;
-  addedAt: Date;
-}
-
-// Define the Resource schema
-const resourceSchema = new mongoose.Schema<IResource>({
-  title: {
-    type: String,
-    required: true,
-  },
-  description: String,
-  type: String,
-  link: String,
-  addedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// Define the StudyPlan schema
-const studyPlanSchema = new mongoose.Schema<IStudyPlan>({
-  subject: {
-    type: String,
-    required: true,
-  },
-  duration: String,
-  examDate: Date,
-  weeklyPlans: [{
-    week: String,
-    goals: [String],
-    dailyTasks: [{
-      day: String,
-      tasks: [String],
-      duration: String,
-    }],
-  }],
-  recommendations: [String],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// Define interface for User document
-interface IUser {
+export interface IUser {
   name: string;
   email: string;
   password: string;
-  subjects: string[];
-  savedPlans: IStudyPlan[];
-  savedResources: IResource[];
-  profile: {
-    preferences: {
-      emailNotifications: boolean;
-      studyReminders: boolean;
-    };
-  };
-  stats: mongoose.Types.ObjectId;
+  branch: string;
+  division: string;
+  college?: string;
+  bio?: string;
+  timezone?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-// Enhanced User schema
-const userSchema = new mongoose.Schema<IUser>({
-  name: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  subjects: [{
-    type: String,
-    trim: true,
-  }],
-  savedPlans: [studyPlanSchema],
-  savedResources: [resourceSchema],
-  profile: {
-    preferences: {
-      emailNotifications: {
-        type: Boolean,
-        default: true,
-      },
-      studyReminders: {
-        type: Boolean,
-        default: true,
-      },
+const userSchema = new Schema<IUser>(
+  {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      minlength: [6, 'Password must be at least 6 characters'],
+    },
+    branch: {
+      type: String,
+      required: [true, 'Branch is required'],
+      trim: true,
+      enum: [
+        'Computer Engineering',
+        'Information Technology Engineering',
+        'Electronics and Telecommunication',
+        'Mechanical Engineering',
+        'Automation and Robotics Engineering'
+      ],
+    },
+    division: {
+      type: String,
+      required: [true, 'Division is required'],
+      trim: true,
+      enum: ['A', 'B'],
+    },
+    college: {
+      type: String,
+      trim: true,
+      default: 'ARMY INSTITUTE OF TECHNOLOGY DIGHI HILLS, PUNE 411015',
+    },
+    bio: {
+      type: String,
+      trim: true,
+    },
+    timezone: {
+      type: String,
+      trim: true,
     },
   },
-  stats: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'StudyStats'
-  },
-}, {
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  }
+);
 
-// Index for performance
-userSchema.index({ subjects: 1 });
-
-// Methods
-userSchema.methods.addStudyPlan = function(plan: IStudyPlan) {
-  this.savedPlans.push(plan);
-  return this.save();
-};
-
-userSchema.methods.addResource = function(resource: IResource) {
-  this.savedResources.push(resource);
-  return this.save();
-};
-
-const User = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+// Prevent model recompilation in Next.js hot reload
+const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 export default User;
-export type { IUser, IStudyPlan, IResource }; 

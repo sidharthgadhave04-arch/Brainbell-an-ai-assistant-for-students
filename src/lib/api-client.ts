@@ -1,8 +1,8 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = typeof window !== 'undefined' ? '/api' : 'http://localhost:3003/api';
 
 export const apiClient = {
   async getCuratedResources(userId: string) {
-    const url = `${API_BASE_URL}/curate-resources/${userId}`;
+    const url = `${API_BASE_URL}/curate-resources?userId=${userId}`;
     
     const response = await fetch(url, {
       headers: {
@@ -27,11 +27,9 @@ export const apiClient = {
     const data = await response.json();
     
     if (!response.ok) {
-      // If it's a RESOURCE_EXISTS error, return it directly
       if (data.error === 'RESOURCE_EXISTS') {
         return data;
       }
-      // For other errors, throw them
       throw {
         status: response.status,
         error: data.error,
@@ -44,7 +42,7 @@ export const apiClient = {
   },
 
   async getStudyPlan(userId: string) {
-    const response = await fetch(`${API_BASE_URL}/generate-plan/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/study-plan?userId=${userId}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -56,7 +54,7 @@ export const apiClient = {
   },
 
   async createStudyPlan(userId: string, subject: string, examDate: string) {
-    const response = await fetch(`${API_BASE_URL}/generate-plan`, {
+    const response = await fetch(`${API_BASE_URL}/study-plan`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,11 +65,9 @@ export const apiClient = {
     const data = await response.json();
     
     if (!response.ok) {
-      // If it's a PLAN_EXISTS error, return it directly
       if (data.error === 'PLAN_EXISTS') {
         return data;
       }
-      // For other errors, throw them
       throw {
         status: response.status,
         error: data.error,
@@ -84,7 +80,7 @@ export const apiClient = {
   },
 
   async deleteStudyPlan(planId: string) {
-    const response = await fetch(`${API_BASE_URL}/generate-plan/${planId}`, {
+    const response = await fetch(`${API_BASE_URL}/study-plan/${planId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -117,4 +113,4 @@ export const apiClient = {
     }
     return response.json();
   }
-}; 
+};

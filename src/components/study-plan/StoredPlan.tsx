@@ -69,11 +69,11 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
         <div className="w-full sm:w-auto">
           <CardTitle className="text-xl sm:text-2xl font-bold break-words">
-            Study Plan for {plan.overview.subject}
+            Study Plan for {plan.overview?.subject || 'Untitled'}
           </CardTitle>
           <div className="flex flex-wrap gap-2 mt-2">
-            <Badge variant="outline" className="text-xs sm:text-sm">{plan.overview.duration}</Badge>
-            <Badge variant="outline" className="text-xs sm:text-sm">Exam: {plan.overview.examDate}</Badge>
+            <Badge variant="outline" className="text-xs sm:text-sm">{plan.overview?.duration || 'N/A'}</Badge>
+            <Badge variant="outline" className="text-xs sm:text-sm">Exam: {plan.overview?.examDate || 'N/A'}</Badge>
             <Badge variant={plan.isActive ? "default" : "secondary"} className="text-xs sm:text-sm">
               {plan.isActive ? "Active" : "Completed"}
             </Badge>
@@ -104,7 +104,7 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
 
       <CardContent>
         <Accordion type="single" collapsible className="w-full">
-          {plan.weeklyPlans.map((weekPlan, index) => (
+          {plan.weeklyPlans?.map((weekPlan, index) => (
             <AccordionItem key={index} value={`week-${index}`}>
               <AccordionTrigger className="text-base sm:text-lg font-semibold">
                 {weekPlan.week}
@@ -114,7 +114,7 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
                   <div>
                     <h4 className="font-semibold mb-2">Goals:</h4>
                     <ul className="list-disc pl-4 sm:pl-5 space-y-1">
-                      {weekPlan.goals.map((goal, idx) => (
+                      {weekPlan.goals?.map((goal, idx) => (
                         <li key={idx} className="break-words">{goal}</li>
                       ))}
                     </ul>
@@ -122,11 +122,11 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
 
                   <div>
                     <h4 className="font-semibold mb-2">Daily Tasks:</h4>
-                    {weekPlan.dailyTasks.map((day, dayIdx) => (
+                    {weekPlan.dailyTasks?.map((day, dayIdx) => (
                       <div key={dayIdx} className="mb-4">
                         <h5 className="font-medium">{day.day} ({day.duration})</h5>
                         <ul className="list-disc pl-4 sm:pl-5 space-y-1">
-                          {day.tasks.map((task, taskIdx) => (
+                          {day.tasks?.map((task, taskIdx) => (
                             <li key={taskIdx} className="break-words">{task}</li>
                           ))}
                         </ul>
@@ -144,7 +144,7 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
             </AccordionTrigger>
             <AccordionContent>
               <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm sm:text-base">
-                {plan.recommendations.map((rec, index) => (
+                {plan.recommendations?.map((rec, index) => (
                   <li key={index} className="break-words">{rec}</li>
                 ))}
               </ul>

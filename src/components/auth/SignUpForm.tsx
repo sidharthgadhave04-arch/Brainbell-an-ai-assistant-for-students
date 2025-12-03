@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -18,6 +16,8 @@ const signUpSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
       "Password must contain at least one uppercase letter, one lowercase letter, and one number"
     ),
+  branch: z.string().min(1, "Please select a branch"),
+  division: z.string().min(1, "Please select a division"),
 });
 
 export function SignUpForm() {
@@ -26,9 +26,19 @@ export function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const validateForm = (name: string, email: string, password: string) => {
+  const branches = [
+    "Computer Engineering",
+    "Information Technology Engineering",
+    "Electronics and Telecommunication",
+    "Mechanical Engineering",
+    "Automation and Robotics Engineering"
+  ];
+
+  const divisions = ["A", "B"];
+
+  const validateForm = (name: string, email: string, password: string, branch: string, division: string) => {
     try {
-      signUpSchema.parse({ name, email, password });
+      signUpSchema.parse({ name, email, password, branch, division });
       setErrors({});
       return true;
     } catch (error) {
@@ -53,8 +63,10 @@ export function SignUpForm() {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
+    const branch = formData.get("branch") as string;
+    const division = formData.get("division") as string;
 
-    if (!validateForm(name, email, password)) {
+    if (!validateForm(name, email, password, branch, division)) {
       setLoading(false);
       return;
     }
@@ -69,6 +81,8 @@ export function SignUpForm() {
           name,
           email,
           password,
+          branch,
+          division,
         }),
       });
 
@@ -145,6 +159,42 @@ export function SignUpForm() {
         <p className="text-xs text-gray-500 mt-1">
           Password must be at least 8 characters and contain uppercase, lowercase, and numbers
         </p>
+      </div>
+      <div>
+        <select
+          name="branch"
+          required
+          className={`w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.branch ? 'border-red-500' : ''}`}
+          defaultValue=""
+        >
+          <option value="" disabled>Select Branch</option>
+          {branches.map((branch) => (
+            <option key={branch} value={branch}>
+              {branch}
+            </option>
+          ))}
+        </select>
+        {errors.branch && (
+          <p className="text-sm text-red-500 mt-1">{errors.branch}</p>
+        )}
+      </div>
+      <div>
+        <select
+          name="division"
+          required
+          className={`w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.division ? 'border-red-500' : ''}`}
+          defaultValue=""
+        >
+          <option value="" disabled>Select Division</option>
+          {divisions.map((division) => (
+            <option key={division} value={division}>
+              Division {division}
+            </option>
+          ))}
+        </select>
+        {errors.division && (
+          <p className="text-sm text-red-500 mt-1">{errors.division}</p>
+        )}
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Creating account..." : "Sign Up"}
