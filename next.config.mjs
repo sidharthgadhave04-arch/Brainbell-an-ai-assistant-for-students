@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
+    // This will completely skip ESLint during builds
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
+    // This will skip TypeScript errors during builds
     ignoreBuildErrors: true,
   },
   webpack: (config) => {
@@ -19,9 +18,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['canvas'],
   },
-  // Increase API route timeout for long-running operations
   serverRuntimeConfig: {
-    // Increase timeout for API routes
     maxDuration: 60,
   },
 };
