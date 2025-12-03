@@ -3,7 +3,7 @@ import { Inter, Lexend } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
-import NotificationProvider from "@/components/NotificationProvider";
+import NotificationProvider from "../components/NotificationProvider";
 
 const inter = Inter({
   subsets: ['latin'],
