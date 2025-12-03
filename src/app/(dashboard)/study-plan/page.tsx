@@ -110,8 +110,7 @@ export default function StudyPlanPage() {
       </div>
       
       <div className="w-full max-w-full sm:max-w-10xl">
-        <StudyPlanForm onPlanGenerated={handlePlanGenerated} />
-      </div>
+<StudyPlanForm onPlanCreated={fetchPlans} />      </div>
 
       {/* Stored Plans Section */}
       <div id="stored-plans" className="mt-8 sm:mt-12">

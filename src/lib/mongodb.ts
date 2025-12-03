@@ -7,13 +7,13 @@ if (!MONGODB_URI) {
   throw new Error('Please define MONGODB_URI in your .env.local file');
 }
 
-let cached = global.mongoose;
+let cached = (global as any).mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
-async function connectDB() {
+export async function connectDB() {
   if (cached.conn) {
     console.log('✅ Using cached database connection');
     return cached.conn;
@@ -27,13 +27,16 @@ async function connectDB() {
       socketTimeoutMS: 45000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-      console.log('✅ New database connection established');
-      return mongoose;
-    }).catch((error) => {
-      console.error('❌ MongoDB connection error:', error);
-      throw error;
-    });
+    cached.promise = mongoose
+      .connect(MONGODB_URI!, opts)
+      .then((mongoose) => {
+        console.log('✅ New database connection established');
+        return mongoose;
+      })
+      .catch((error) => {
+        console.error('❌ MongoDB connection error:', error);
+        throw error;
+      });
   }
 
   try {
@@ -47,6 +50,6 @@ async function connectDB() {
   return cached.conn;
 }
 
-// Export both names for compatibility
+// These are optional exports (not required, but safe)
 export default connectDB;
 export const connectMongoDB = connectDB;
