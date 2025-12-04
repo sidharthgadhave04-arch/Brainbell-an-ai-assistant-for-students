@@ -257,7 +257,7 @@ async function generatePlan(subject, userId, examDate) {
     const parsedPlan = JSON.parse(completion.choices[0]?.message?.content || "{}");
     
     // Validate the required fields
-    if (!parsedPlan.overview? || !parsedPlan.weeklyPlans || !parsedPlan.recommendations) {
+    if (!parsedPlan.overview || !parsedPlan.weeklyPlans || !parsedPlan.recommendations) {
       throw new Error('Missing required fields in plan structure');
     }
     
