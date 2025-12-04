@@ -1,22 +1,23 @@
-version: '3.8'
-
 services:
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - MONGODB_URI=${MONGODB_URI}
+        - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - MONGODB_URI=${MONGODB_URI}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - EXPRESS_BACKEND_URL=${EXPRESS_BACKEND_URL}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      - API_URL=${NEXT_PUBLIC_API_URL}
+      - EXPRESS_BACKEND_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     networks:
       - app-network
 
@@ -26,6 +27,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - PORT=8000
       - MONGODB_URI=${MONGODB_URI}
@@ -40,8 +43,8 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 2m
+      test: ["CMD", "curl", "-f", "http://localhost:8000/pdf/health"]
+      interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s

@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   eslint: {
-    // This will completely skip ESLint during builds
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // This will skip TypeScript errors during builds
     ignoreBuildErrors: true,
   },
   webpack: (config) => {
@@ -18,8 +17,9 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['canvas'],
   },
-  serverRuntimeConfig: {
-    maxDuration: 60,
+  // Disable static page generation for API routes during build
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
   },
 };
 

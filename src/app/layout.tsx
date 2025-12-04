@@ -9,12 +9,14 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
+  preload: false,
 });
 
 const lexend = Lexend({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-lexend',
+  preload: false,
 });
 
 export const metadata: Metadata = {
