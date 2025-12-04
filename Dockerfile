@@ -11,7 +11,7 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Build stage
 FROM base AS builder
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++
 WORKDIR /app
 
 # Accept build arguments
@@ -19,7 +19,8 @@ ARG MONGODB_URI
 ARG NEXTAUTH_SECRET
 
 COPY package.json package-lock.json* ./
-RUN npm ci && npm cache clean --force
+# Install ALL dependencies including devDependencies for build
+RUN npm install && npm cache clean --force
 
 COPY . .
 
