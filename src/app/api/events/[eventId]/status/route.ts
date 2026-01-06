@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import Event from '@/server/models/event';
+
+// Database connection helper
+const connectDB = async () => {
+  if (mongoose.connections[0].readyState) {
+    return;
+  }
+  
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI is not defined');
+  }
+  
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
+};
+
+// Admin passkey
+const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY || '123456';
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { eventId: string } }
+) {
+  try {
+    // Connect to database
+    await connectDB();
+
+    const eventId = params.eventId;
+    let body;
+    
+    try {
+      body = await request.json();
+    } catch (e) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { status, passkey, userRole } = body;
+
+    // Validate eventId
+    if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid event ID' },
+        { status: 400 }
+      );
+    }
+
+    // Validate status
+    if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid status value' },
+        { status: 400 }
+      );
+    }
+
+    // Check passkey for BOTH approval AND rejection
+    if (status === 'approved' || status === 'rejected') {
+      if (!passkey) {
+        return NextResponse.json(
+          { success: false, error: `Passkey required for ${status}` },
+          { status: 401 }
+        );
+      }
+
+      if (passkey !== ADMIN_PASSKEY) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid passkey' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Find and update the event
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      { 
+        status,
+        approvedAt: status === 'approved' ? new Date() : undefined,
+        rejectedAt: status === 'rejected' ? new Date() : undefined,
+        approvedBy: userRole || 'admin'
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!event) {
+      return NextResponse.json(
+        { success: false, error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Event ${status} successfully`,
+      event
+    });
+
+  } catch (error: any) {
+    console.error('Error updating event status:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
