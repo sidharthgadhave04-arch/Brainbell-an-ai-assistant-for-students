@@ -1,4 +1,4 @@
-# Brainbell: An Ai Assistant For Students
+# Brainbell: An AI Assistant For Students
 
 ## Table of Contents
 - [Overview](#overview)
@@ -10,20 +10,35 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-
-
-
-https://github.com/user-attachments/assets/1ea26947-1dca-408d-9741-b24c3429944a
-
-
-
 ## Overview
 
-Brainbell is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, and interactive assistance to help students achieve their academic goals efficiently.
+Brainbell is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, interactive assistance, and campus event management to help students achieve their academic goals efficiently while staying connected with their college community.
 
 ## Key Features
 
-### 1. AI-Powered Study Planning 📚
+### 1. Event Zone - Campus Event Hub 🎉
+- **Centralized Event Management**
+  - Single source of truth for all college events
+  - No more scattered WhatsApp messages
+  - Real-time event updates and notifications
+  - Event categories (academic, cultural, sports, workshops)
+- **Smart Event Discovery**
+  - AI-powered event recommendations
+  - Filter by date, category, and department
+  - Search functionality for quick access
+  - Upcoming events dashboard
+- **Event Details & RSVP**
+  - Comprehensive event information (venue, time, organizers)
+  - One-click RSVP system
+  - Calendar integration
+  - Reminder notifications
+- **No More Chaos**
+  - Replaces hectic WhatsApp group spam
+  - Organized event announcements
+  - Easy access to event history
+  - Reduced information overload
+
+### 2. AI-Powered Study Planning 📚
 - **Dynamic Plan Generation**
   - Subject-based customization
   - Exam date optimization
@@ -35,7 +50,7 @@ Brainbell is an intelligent study companion that leverages AI to transform the l
   - Adjustable schedules
   - Performance analytics
 
-### 2. Smart Resource Curation 🔍
+### 3. Smart Resource Curation 🔍
 - **AI-Driven Content Discovery**
   - Tavily API integration for relevant search
   - Quality scoring algorithm
@@ -51,7 +66,7 @@ Brainbell is an intelligent study companion that leverages AI to transform the l
   - Format-based organization
   - Topic relevance ranking
 
-### 3. Interactive PDF Chat Assistant 📄
+### 4. Interactive PDF Chat Assistant 📄
 - **Document Analysis**
   - Upload and process PDF documents
   - AI-powered document comprehension
@@ -67,13 +82,28 @@ Brainbell is an intelligent study companion that leverages AI to transform the l
   - Fullscreen mode
   - Synchronized chat and document view
 
-### 4. User Experience 🎯
+### 5. Productivity Tools 🎯
+- **Pomodoro Timer**
+  - 25-minute work/break intervals
+  - Session tracking and statistics
+  - Customizable durations
+  - Productivity analytics
+- **Notes Management**
+  - Rich text formatting
+  - Subject-wise organization
+  - Search functionality
+  - Multi-device sync
+
+### 6. User Experience ✨
 - **Modern Interface**
   - Clean, responsive design
   - Toast notifications
   - Loading states
-- **Navigation Features**
-  - Pagination system
+  - Intuitive navigation
+- **Seamless Integration**
+  - All features in one platform
+  - Quick access navigation
+  - Persistent data across sessions
 
 ## Tech Stack
 
@@ -108,8 +138,8 @@ Brainbell is an intelligent study companion that leverages AI to transform the l
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/KartikLabhshetwar/mind-mentor
-cd mind-mentor
+git clone https://github.com/sidharthgadhave04-arch/Brainbell-an-ai-assistant-for-students.git
+cd Brainbell-an-ai-assistant-for-students
 ```
 
 2. Set up environment variables:
@@ -152,6 +182,7 @@ Used for:
 - Study plan generation
 - Resource description enhancement
 - Learning path recommendations
+- PDF document analysis
 
 ### Tavily API
 Used for:
@@ -159,7 +190,22 @@ Used for:
 - Content relevance scoring
 - Resource metadata extraction
 
+### HuggingFace
+Used for:
+- Document embeddings
+- Semantic search
+- Context-aware responses
+
 ## Usage Guide
+
+### Event Zone
+1. Navigate to the Event Zone section
+2. Browse all upcoming college events
+3. Filter by category, date, or department
+4. Click on an event for detailed information
+5. RSVP to events you want to attend
+6. Set reminders and add to your calendar
+7. Stay updated without WhatsApp spam
 
 ### Study Plan Generation
 1. Navigate to the study plan section
@@ -168,7 +214,7 @@ Used for:
 4. View and customize your personalized study schedule
 
 ### Pomodoro Timer
-1. A 25 minute timer work/break duration
+1. Set your 25-minute timer work/break duration
 2. Start your study session
 3. Follow the timer prompts for breaks
 4. View your session history and statistics
@@ -204,4 +250,4 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 ---
 
-Built with 💡 by Kartik Labhshetwar
+Built with 💡 by Siddharth Gadhave

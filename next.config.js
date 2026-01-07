@@ -1,17 +1,18 @@
-﻿/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['api.dicebear.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+      },
+    ],
   },
   typescript: {
-    // ⚠️ Temporarily ignore TypeScript errors during build
+    // ?? Temporarily ignore TypeScript errors during build
     // TODO: Remove this after fixing all type errors
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Also ignore ESLint errors during build
-    ignoreDuringBuilds: true,
   },
   // Increase server action body size limit
   experimental: {
@@ -19,14 +20,8 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      canvas: false,
-      encoding: false,
-    };
-    return config;
-  },
+  // Add empty turbopack config to silence webpack warning
+  turbopack: {},
 };
 
 module.exports = nextConfig;

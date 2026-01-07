@@ -17,12 +17,13 @@ const connectDB = async () => {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     await connectDB();
 
-    const eventId = params.eventId;
+    // Await params (Next.js 15 requirement)
+    const { eventId } = await params;
     const body = await request.json();
     const { userId, name, branch, division, yearOfStudy } = body;
 

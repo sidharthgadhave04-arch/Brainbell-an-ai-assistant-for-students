@@ -18,12 +18,13 @@ const connectDB = async () => {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const planId = params.id;
+    // Await params (Next.js 15 requirement)
+    const { id: planId } = await params;
 
     // Validate the planId
     if (!planId || !mongoose.Types.ObjectId.isValid(planId)) {
@@ -66,12 +67,13 @@ export async function DELETE(
 // GET method to fetch a single plan by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const planId = params.id;
+    // Await params (Next.js 15 requirement)
+    const { id: planId } = await params;
 
     if (!planId || !mongoose.Types.ObjectId.isValid(planId)) {
       return NextResponse.json(

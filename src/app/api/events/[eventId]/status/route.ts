@@ -25,13 +25,14 @@ const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY || '123456';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     // Connect to database
     await connectDB();
 
-    const eventId = params.eventId;
+    // Await params (Next.js 15 requirement)
+    const { eventId } = await params;
     let body;
     
     try {

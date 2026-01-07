@@ -89,7 +89,7 @@ export default function EventsPage() {
     fetchEvents();
   }, [fetchEvents]);
 
-  const handleCreateEvent = async (eventData: Omit<Event, '_id' | 'attendees' | 'feedback' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateEvent = async (eventData: any) => {
     try {
       const response = await fetch('/api/events', {
         method: 'POST',
@@ -130,33 +130,25 @@ export default function EventsPage() {
     try {
       let finalPasskey = passkey;
       
-      // If passkey not provided (for approval), prompt for it
-      if (newStatus === 'approved' && !finalPasskey) {
-        finalPasskey = prompt('Enter 6-digit admin passkey to approve this event:');
+      // If passkey not provided, prompt for it
+      if (!finalPasskey) {
+        const action = newStatus === 'approved' ? 'approve' : 'reject';
+        finalPasskey = prompt(`Enter 6-digit admin passkey to ${action} this event:`);
         
         if (!finalPasskey) {
           toast({
             title: "Cancelled",
-            description: "Event approval cancelled"
-          });
-          return;
-        }
-        
-        if (!/^\d{6}$/.test(finalPasskey)) {
-          toast({
-            title: "Invalid Passkey",
-            description: "Passkey must be exactly 6 digits",
-            variant: "destructive"
+            description: `Event ${action}al cancelled`
           });
           return;
         }
       }
-
-      // For rejection, passkey should already be provided from EventCard
-      if (newStatus === 'rejected' && !finalPasskey) {
+      
+      // Validate passkey format - must be exactly 6 digits
+      if (finalPasskey.length !== 6 || !/^\d+$/.test(finalPasskey)) {
         toast({
-          title: "Error",
-          description: "Passkey required for rejection",
+          title: "Invalid Passkey",
+          description: "Passkey must be exactly 6 digits",
           variant: "destructive"
         });
         return;

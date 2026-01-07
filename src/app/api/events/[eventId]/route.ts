@@ -22,15 +22,17 @@ const connectDB = async () => {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { eventId: string } }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     await connectDB();
 
+    // Await params (Next.js 15 requirement)
+    const { eventId } = await params;
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const userRole = searchParams.get('userRole');
-    const eventId = params.eventId;
 
     console.log('🗑️ Delete event request:', { eventId, userId, userRole });
 
