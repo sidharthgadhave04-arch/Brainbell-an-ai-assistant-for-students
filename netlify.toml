@@ -1,17 +1,12 @@
+@"
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20.11.0"
   NPM_FLAGS = "--legacy-peer-deps"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[dev]
-  command = "npm run dev"
-  port = 5173
-  targetPort = 5173
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+"@ | Out-File -FilePath netlify.toml -Encoding utf8
