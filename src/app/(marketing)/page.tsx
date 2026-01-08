@@ -23,7 +23,7 @@ export default function Page() {
   const features = [
     {
       icon: <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-[#7fb236]" />,
-      title: "Personalized Study Plans", 
+      title: "Personalized Study Plans",
       description: "Get tailored study plans based on your goals and learning style."
     },
     {
@@ -47,14 +47,14 @@ export default function Page() {
         ctaText={session ? "Go to Dashboard" : "Get Started"}
         ctaLink={session ? "/home" : "/register"}
       />
-      
+
       <FeaturesGrid features={features} />
 
       <section className="py-12 sm:py-20">
         <div className="max-w-6xl mx-auto">
           <div className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] rounded-2xl overflow-hidden shadow-2xl">
-            <Image 
-              src="/AIT.jpg" 
+            <Image
+              src="/AIT.jpg"
               alt="Campus Building"
               fill
               className="object-cover"
@@ -72,7 +72,7 @@ export default function Page() {
           <p className="text-center text-gray-700 mb-12 max-w-2xl mx-auto">
             Transform your learning journey with our intelligent study companion designed to maximize your academic potential
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             {/* Card 1 */}
             <div className="bg-white rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow border-2 border-[#c1ff72]">
@@ -131,27 +131,27 @@ export default function Page() {
           <div className="bg-black rounded-xl p-8 sm:p-12 text-white">
             <div className="grid grid-cols-3 gap-6 sm:gap-8 text-center">
               <div>
-                <AnimatedCounter 
-                  end={50} 
-                  suffix="K+" 
+                <AnimatedCounter
+                  end={50}
+                  suffix="K+"
                   duration={2500}
                   className="text-3xl sm:text-5xl font-bold text-[#c1ff72] mb-2"
                 />
                 <p className="text-white text-sm sm:text-base font-medium">Students Empowered</p>
               </div>
               <div>
-                <AnimatedCounter 
-                  end={1} 
-                  suffix="M+" 
+                <AnimatedCounter
+                  end={1}
+                  suffix="M+"
                   duration={2500}
                   className="text-3xl sm:text-5xl font-bold text-[#c1ff72] mb-2"
                 />
                 <p className="text-white text-sm sm:text-base font-medium">Study Plans Generated</p>
               </div>
               <div>
-                <AnimatedCounter 
-                  end={98} 
-                  suffix="%" 
+                <AnimatedCounter
+                  end={98}
+                  suffix="%"
                   duration={2500}
                   className="text-3xl sm:text-5xl font-bold text-[#c1ff72] mb-2"
                 />
@@ -162,7 +162,6 @@ export default function Page() {
         </div>
       </section>
 
-      
       <FaqSection />
     </div>
   )

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiClient } from "@/lib/api-client";
+import { Loader2 } from "lucide-react";
 
 export interface Task {
   day: string;
@@ -36,31 +36,34 @@ export interface StudyPlan {
 
 interface StoredPlanProps {
   plan: StudyPlan;
-  onDelete: (planId: string) => void;
+  onDelete: (planId: string) => Promise<void>;
+  isDeleting?: boolean;
 }
 
-export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
+export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanProps) {
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleDelete = async () => {
     try {
-      setIsDeleting(true);
-      await apiClient.deleteStudyPlan(plan._id);
-      onDelete(plan._id);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Study plan deleted successfully",
-      });
-    } catch {
+      console.log('🗑️ StoredPlan: Initiating delete for plan:', plan._id);
+      
+      // Call the onDelete function passed from parent
+      await onDelete(plan._id);
+      
+      // Close the dialog after successful deletion
+      setIsDialogOpen(false);
+      
+      console.log('✅ StoredPlan: Delete completed successfully');
+    } catch (error) {
+      console.error('❌ StoredPlan: Delete failed:', error);
+      
+      // The parent component will handle the toast, but we'll keep this as fallback
       toast({
         variant: "error",
         title: "Error",
-        description: "Failed to delete study plan",
+        description: error instanceof Error ? error.message : "Failed to delete study plan",
       });
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -79,23 +82,47 @@ export function StoredPlan({ plan, onDelete }: StoredPlanProps) {
             </Badge>
           </div>
         </div>
-        <AlertDialog>
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={isDeleting} className="w-full sm:w-auto hover:bg-red-500">
-              Delete Plan
+            <Button 
+              variant="destructive" 
+              disabled={isDeleting} 
+              className="w-full sm:w-auto hover:bg-red-500"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Plan'
+              )}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent className="w-[95vw] max-w-md sm:w-full">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete your study plan.
+                This action cannot be undone. This will permanently delete your study plan for {plan.overview?.subject || 'this subject'}.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-              <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="w-full sm:w-auto hover:bg-red-500">
-                Delete
+              <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDelete} 
+                disabled={isDeleting}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

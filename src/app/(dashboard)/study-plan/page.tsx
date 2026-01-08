@@ -18,13 +18,21 @@ export default function StudyPlanPage() {
   const [storedPlans, setStoredPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchPlans = useCallback(async () => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
+      console.log('🔄 Fetching study plans for user:', session.user.id);
+      
       const data = await apiClient.getStudyPlan(session.user.id);
+      
       if (data.error) {
         console.error("API returned error:", data.error);
         toast({
@@ -41,6 +49,7 @@ export default function StudyPlanPage() {
         const sortedPlans = data.plans.sort((a: StudyPlan, b: StudyPlan) => 
           b._id.localeCompare(a._id)
         );
+        console.log('✅ Successfully fetched plans:', sortedPlans.length);
         setStoredPlans(sortedPlans);
       } else {
         console.error("Invalid plans data structure:", data);
@@ -63,34 +72,96 @@ export default function StudyPlanPage() {
     fetchPlans();
   }, [fetchPlans]);
 
-  const handlePlanGenerated = () => {
-    // Refresh the plans list after a short delay
-    setTimeout(() => {
-      fetchPlans();
-    }, 500);
-  };
-
   const handlePlanDelete = async (planId: string) => {
+    if (!planId) {
+      console.error('❌ No plan ID provided');
+      return;
+    }
+
+    // Prevent multiple delete requests
+    if (isDeleting === planId) {
+      console.log('⏳ Delete already in progress for plan:', planId);
+      return;
+    }
+
+    console.log('🗑️ Starting delete for plan:', planId);
+    setIsDeleting(planId);
+
     try {
-      const response = await apiClient.deleteStudyPlan(planId);
-      if (response.success) {
-        // Update the local state to remove the deactivated plan
-        setStoredPlans(plans => plans.filter(plan => plan._id !== planId));
+      // Call the API to delete the study plan
+      const response = await fetch(`/api/study-plan/${planId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📡 Delete response status:', response.status);
+
+      // Parse the response
+      let data;
+      try {
+        data = await response.json();
+        console.log('📦 Delete response data:', data);
+      } catch (parseError) {
+        console.error('❌ Failed to parse response:', parseError);
+        throw new Error('Invalid response from server');
+      }
+
+      // Check if the request was successful
+      if (!response.ok) {
+        console.error('❌ Delete request failed:', data);
+        throw new Error(data.error || data.message || 'Failed to delete plan');
+      }
+
+      // Verify the deletion was successful
+      if (data.success) {
+        console.log('✅ Plan deleted successfully, updating UI');
+        
+        // Optimistically update the UI by removing the plan from state
+        setStoredPlans(prevPlans => {
+          const updatedPlans = prevPlans.filter(plan => plan._id !== planId);
+          console.log('📊 Plans after deletion:', updatedPlans.length);
+          return updatedPlans;
+        });
+        
+        // Adjust current page if necessary
+        const newTotalPages = Math.ceil((storedPlans.length - 1) / ITEMS_PER_PAGE);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        }
+        
         toast({
-          variant: "success",
+          variant: "default",
           title: "Success",
-          description: response.message || "Study plan deactivated successfully."
+          description: data.message || "Study plan deleted successfully."
         });
       } else {
-        throw new Error(response.message || 'Failed to deactivate plan');
+        throw new Error(data.error || data.message || 'Failed to delete plan');
       }
     } catch (error: unknown) {
-      console.error("Error deactivating plan:", error);
+      console.error("❌ Error in handlePlanDelete:", error);
+      
+      // Type-safe error message extraction
+      let errorMessage = "Failed to delete study plan. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
       toast({
         variant: "error",
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to deactivate study plan. Please try again."
+        description: errorMessage
       });
+      
+      // Optionally refresh the plans list to ensure UI is in sync
+      console.log('🔄 Refreshing plans after error');
+      await fetchPlans();
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -110,7 +181,8 @@ export default function StudyPlanPage() {
       </div>
       
       <div className="w-full max-w-full sm:max-w-10xl">
-<StudyPlanForm onPlanCreated={fetchPlans} />      </div>
+        <StudyPlanForm onPlanCreated={fetchPlans} />
+      </div>
 
       {/* Stored Plans Section */}
       <div id="stored-plans" className="mt-8 sm:mt-12">
@@ -130,6 +202,7 @@ export default function StudyPlanPage() {
                   key={plan._id}
                   plan={plan}
                   onDelete={handlePlanDelete}
+                  isDeleting={isDeleting === plan._id}
                 />
               ))}
             </div>

@@ -1,18 +1,28 @@
+// File: src/app/api/events/[eventId]/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Event from '@/server/models/event';
 
 // Database connection helper
 const connectDB = async () => {
-  if (mongoose.connections[0].readyState) {
-    return;
+  try {
+    // Check if already connected (readyState 1 = connected)
+    if (mongoose.connection.readyState === 1) {
+      return;
+    }
+
+    const mongoUri = process.env.MONGODB_URI;
+
+    if (!mongoUri) {
+      throw new Error('MONGODB_URI is not defined');
+    }
+
+    await mongoose.connect(mongoUri);
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    throw error;
   }
-  
-  if (!process.env.MONGODB_URI) {
-    throw new Error('MONGODB_URI is not defined');
-  }
-  
-  await mongoose.connect(process.env.MONGODB_URI);
 };
 
 export async function POST(
@@ -20,14 +30,15 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    // Connect to database
     await connectDB();
 
-    // Await params (Next.js 15 requirement)
-    const { eventId } = await params;
+    // Parse request body
     const body = await request.json();
-    const { userId, name, branch, division, yearOfStudy } = body;
 
-    console.log('📝 Registration request:', { eventId, userId, name, branch, division, yearOfStudy });
+    // Await params (Next.js 15 requirement)
+    const resolvedParams = await params;
+    const eventId = resolvedParams.eventId;
 
     // Validate eventId
     if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
@@ -37,15 +48,54 @@ export async function POST(
       );
     }
 
-    // Validate required fields
-    if (!userId) {
+    // Create or update event logic here
+    const event = await Event.findByIdAndUpdate(
+      eventId,
+      body,
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    console.log('✅ Event registered successfully:', eventId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Event registered successfully',
+      event: event.toObject()
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error('❌ Error registering event:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to register event',
+        message: errorMessage
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  try {
+    await connectDB();
+
+    const resolvedParams = await params;
+    const eventId = resolvedParams.eventId;
+
+    if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
       return NextResponse.json(
-        { success: false, error: 'User ID is required' },
+        { success: false, error: 'Invalid event ID' },
         { status: 400 }
       );
     }
 
-    // Find the event
     const event = await Event.findById(eventId);
 
     if (!event) {
@@ -55,50 +105,22 @@ export async function POST(
       );
     }
 
-    // Check if already registered
-    const isRegistered = event.attendees.some(
-      (attendee: any) => attendee.userId?.toString() === userId
-    );
+    return NextResponse.json({
+      success: true,
+      event: event.toObject()
+    }, { status: 200 });
 
-    if (isRegistered) {
-      // Unregister
-      event.attendees = event.attendees.filter(
-        (attendee: any) => attendee.userId?.toString() !== userId
-      );
-      await event.save();
-
-      console.log('✅ User unregistered successfully');
-
-      return NextResponse.json({
-        success: true,
-        registered: false,
-        message: 'Unregistered from event successfully'
-      });
-    } else {
-      // Register with student details
-      event.attendees.push({
-        userId,
-        name,
-        branch,
-        division,
-        yearOfStudy,
-        registeredAt: new Date()
-      });
-      await event.save();
-
-      console.log('✅ User registered successfully with details');
-
-      return NextResponse.json({
-        success: true,
-        registered: true,
-        message: 'Registered for event successfully'
-      });
-    }
-
-  } catch (error: any) {
-    console.error('❌ Error processing registration:', error);
+  } catch (error) {
+    console.error('❌ Error fetching event:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to process registration' },
+      { 
+        success: false,
+        error: 'Failed to fetch event',
+        message: errorMessage
+      },
       { status: 500 }
     );
   }
