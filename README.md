@@ -252,6 +252,17 @@ Used for:
 4. Navigate through the document while chatting
 5. Access chat history for previous conversations
 
+🌐 Deployment
+This project is live and hosted on Netlify.
+
+🔗 Live URL
+👉 https://brainbellai1.netlify.app
+
+🚀 Hosting Details
+Deployed using Netlify
+Automatic build + deploy on every GitHub commit
+Build Command: npm run build
+
 ## Contributing
 
 We welcome contributions! Please follow these steps:
