@@ -14,6 +14,24 @@
 
 Brainbell is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, interactive assistance, and campus event management to help students achieve their academic goals efficiently while staying connected with their college community.
 
+🔐 User Authentication (Signup & Signin)
+Our platform allows users to quickly create an account and access their personalized dashboard.
+
+🌟 Sign Up
+To create a new account, users must provide:
+• Name
+• Email
+• Password (minimum 8 characters, must include uppercase, lowercase, and numbers)
+• Branch (dropdown)
+• Division (dropdown)
+After submitting the form, users are redirected to their personalized dashboard with features based on their selected branch and division.
+
+🔑 Sign In
+Existing users can log in using:
+• Email
+• Password
+Upon successful login, users are taken directly to their dashboard.
+
 ## Key Features
 
 ### 1. Event Zone - Campus Event Hub 🎉
