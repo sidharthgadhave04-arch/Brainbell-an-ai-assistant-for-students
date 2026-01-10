@@ -1,5 +1,4 @@
 # Brainbell: An AI Assistant For Students
-i have edited it with more interactive and more features than the previous....working for college students....
 
 ## Table of Contents
 - [Overview](#overview)
