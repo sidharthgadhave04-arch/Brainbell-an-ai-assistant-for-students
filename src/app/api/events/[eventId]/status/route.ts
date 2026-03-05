@@ -2,16 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Event from '@/server/models/event';
 
-// Database connection helper
 const connectDB = async () => {
-  if (mongoose.connections[0].readyState) {
-    return;
-  }
-  
-  if (!process.env.MONGODB_URI) {
-    throw new Error('MONGODB_URI is not defined');
-  }
-  
+  if (mongoose.connections[0].readyState) return;
+  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not defined');
   try {
     await mongoose.connect(process.env.MONGODB_URI);
   } catch (error) {
@@ -20,21 +13,15 @@ const connectDB = async () => {
   }
 };
 
-// Admin passkey
-const ADMIN_PASSKEY = process.env.ADMIN_PASSKEY || '123456';
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    // Connect to database
     await connectDB();
-
-    // Await params (Next.js 15 requirement)
     const { eventId } = await params;
+
     let body;
-    
     try {
       body = await request.json();
     } catch (e) {
@@ -44,9 +31,8 @@ export async function PATCH(
       );
     }
 
-    const { status, passkey, userRole } = body;
+    const { status, passkey } = body;
 
-    // Validate eventId
     if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid event ID' },
@@ -54,7 +40,6 @@ export async function PATCH(
       );
     }
 
-    // Validate status
     if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
       return NextResponse.json(
         { success: false, error: 'Invalid status value' },
@@ -62,41 +47,42 @@ export async function PATCH(
       );
     }
 
-    // Check passkey for BOTH approval AND rejection
     if (status === 'approved' || status === 'rejected') {
       if (!passkey) {
         return NextResponse.json(
-          { success: false, error: `Passkey required for ${status}` },
+          { success: false, error: 'Secret key required' },
           { status: 401 }
         );
       }
 
-      if (passkey !== ADMIN_PASSKEY) {
+      // Find event and validate against its stored secret key
+      const existingEvent = await Event.findById(eventId);
+      if (!existingEvent) {
         return NextResponse.json(
-          { success: false, error: 'Invalid passkey' },
+          { success: false, error: 'Event not found' },
+          { status: 404 }
+        );
+      }
+
+      // Use event's own secretKey, fallback to ADMIN_PASSKEY for old events
+      const validKey = existingEvent.secretKey || process.env.ADMIN_PASSKEY;
+      if (passkey !== validKey) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid secret key' },
           { status: 403 }
         );
       }
     }
 
-    // Find and update the event
     const event = await Event.findByIdAndUpdate(
       eventId,
-      { 
+      {
         status,
         approvedAt: status === 'approved' ? new Date() : undefined,
-        rejectedAt: status === 'rejected' ? new Date() : undefined,
-        approvedBy: userRole || 'admin'
+        approvedBy: 'admin'
       },
       { new: true, runValidators: true }
     );
-
-    if (!event) {
-      return NextResponse.json(
-        { success: false, error: 'Event not found' },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({
       success: true,

@@ -2,30 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Event from '@/server/models/event';
 
-// Database connection helper with caching
 let isConnected = false;
 
 const connectDB = async () => {
-  // Set strict query mode
   mongoose.set('strictQuery', true);
-
-  // If already connected, return
   if (isConnected && mongoose.connection.readyState === 1) {
     console.log('Using existing database connection');
     return;
   }
-  
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI is not defined in environment variables');
   }
-  
   try {
     const db = await mongoose.connect(process.env.MONGODB_URI, {
-      dbName: 'brainbell', // Replace with your actual database name
-      bufferCommands: false, // Disable command buffering
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      dbName: 'brainbell',
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     });
-
     isConnected = db.connections[0].readyState === 1;
     console.log('MongoDB connected successfully');
   } catch (error) {
@@ -37,9 +30,7 @@ const connectDB = async () => {
 
 export async function GET(request) {
   try {
-    // IMPORTANT: Await the connection BEFORE any database operations
     await connectDB();
-
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const status = searchParams.get('status');
@@ -47,33 +38,29 @@ export async function GET(request) {
 
     const query = {};
 
-    if (category && category !== 'all') {
-      query.category = category;
-    }
+    if (category && category !== 'all') query.category = category;
 
-    if (status && status !== 'all') {
+    // 'all' = no status filter (admin sees everything)
+    // null/undefined = default to approved (students see only approved)
+    // specific status = filter by that status
+    if (status === 'all') {
+      // no status filter — return everything
+    } else if (status && status !== 'all') {
       query.status = status;
+    } else {
+      // no status param passed — default to approved
+      query.status = 'approved';
     }
 
-    if (search) {
-      query.title = { $regex: search, $options: 'i' };
-    }
+    if (search) query.title = { $regex: search, $options: 'i' };
 
     const events = await Event.find(query).sort({ createdAt: -1 });
-
-    return NextResponse.json({
-      success: true,
-      events
-    });
+    return NextResponse.json({ success: true, events });
 
   } catch (error) {
     console.error('Error fetching events:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to fetch events',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
+      { success: false, error: error.message || 'Failed to fetch events' },
       { status: 500 }
     );
   }
@@ -81,12 +68,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    // IMPORTANT: Await the connection BEFORE any database operations
     await connectDB();
-
     const body = await request.json();
 
-    // Validate required fields
     if (!body.title || !body.description) {
       return NextResponse.json(
         { success: false, error: 'Title and description are required' },
@@ -96,13 +80,13 @@ export async function POST(request) {
 
     const newEvent = new Event({
       ...body,
+      secretKey: body.secretKey || null,
       status: body.organizerRole === 'admin' ? 'approved' : 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     await newEvent.save();
-
     return NextResponse.json({
       success: true,
       message: 'Event created successfully',
@@ -112,11 +96,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating event:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to create event',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
+      { success: false, error: error.message || 'Failed to create event' },
       { status: 500 }
     );
   }

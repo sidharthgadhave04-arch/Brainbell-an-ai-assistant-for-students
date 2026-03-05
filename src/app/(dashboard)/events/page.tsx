@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +46,7 @@ export default function EventsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('approved');
   const [searchQuery, setSearchQuery] = useState('');
   const [userRole, setUserRole] = useState<'student' | 'organizer' | 'admin'>('student');
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
@@ -56,11 +55,17 @@ export default function EventsPage() {
 
   const categories = ['Academic', 'Cultural', 'Sports', 'Technical', 'Social', 'Workshop', 'Seminar', 'Other'];
 
-  const fetchEvents = useCallback(async () => {
+  useEffect(() => {
+    if (userRole === 'admin') setFilterStatus('all');
+    else setFilterStatus('all');
+  }, [userRole]);
+
+  const fetchEvents = useCallback(async (statusOverride?: string) => {
     try {
       const params = new URLSearchParams();
       if (filterCategory !== 'all') params.append('category', filterCategory);
-      if (filterStatus !== 'all') params.append('status', filterStatus);
+      const effectiveStatus = statusOverride !== undefined ? statusOverride : filterStatus;
+      params.append('status', effectiveStatus);
       if (searchQuery) params.append('search', searchQuery);
 
       const response = await fetch(`/api/events?${params.toString()}`);
@@ -69,25 +74,17 @@ export default function EventsPage() {
       if (data.success) {
         setEvents(data.events);
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to fetch events"
-        });
+        toast({ title: "Error", description: "Failed to fetch events" });
       }
     } catch (error) {
       console.error("Error fetching events:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch events"
-      });
+      toast({ title: "Error", description: "Failed to fetch events" });
     } finally {
       setLoading(false);
     }
   }, [filterCategory, filterStatus, searchQuery, toast]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   const handleCreateEvent = async (eventData: any) => {
     try {
@@ -107,98 +104,58 @@ export default function EventsPage() {
       if (data.success) {
         toast({
           title: "Success",
-          description: userRole === 'admin' ? "Event created and approved" : "Event created and pending approval"
+          description: userRole === 'admin'
+            ? "Event created and approved"
+            : "Event created! Key sent to admin for approval."
         });
         setShowCreateForm(false);
-        fetchEvents();
+        fetchEvents('all');
       } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to create event"
-        });
+        toast({ title: "Error", description: data.message || "Failed to create event" });
       }
     } catch (error) {
       console.error("Error creating event:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create event"
-      });
+      toast({ title: "Error", description: "Failed to create event" });
     }
   };
 
   const handleStatusUpdate = async (eventId: string, newStatus: 'approved' | 'rejected', passkey?: string) => {
     try {
       let finalPasskey = passkey;
-      
-      // If passkey not provided, prompt for it
+
       if (!finalPasskey) {
         const action = newStatus === 'approved' ? 'approve' : 'reject';
-        finalPasskey = prompt(`Enter 6-digit admin passkey to ${action} this event:`);
-        
+        finalPasskey = prompt(`Enter secret key to ${action} this event:`);
         if (!finalPasskey) {
-          toast({
-            title: "Cancelled",
-            description: `Event ${action}al cancelled`
-          });
+          toast({ title: "Cancelled", description: `Event ${action} cancelled` });
           return;
         }
-      }
-      
-      // Validate passkey format - must be exactly 6 digits
-      if (finalPasskey.length !== 6 || !/^\d+$/.test(finalPasskey)) {
-        toast({
-          title: "Invalid Passkey",
-          description: "Passkey must be exactly 6 digits",
-          variant: "destructive"
-        });
-        return;
       }
 
       const response = await fetch(`/api/events/${eventId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: newStatus, 
-          passkey: finalPasskey,
-          userRole 
-        })
+        body: JSON.stringify({ status: newStatus, passkey: finalPasskey, userRole })
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update event');
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to update event');
 
       if (data.success) {
-        toast({
-          title: "Success",
-          description: `Event ${newStatus} successfully`
-        });
+        toast({ title: "Success", description: `Event ${newStatus} successfully` });
         fetchEvents();
       } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to update event",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: data.error || "Failed to update event", variant: "destructive" });
       }
     } catch (error: any) {
-      console.error("Error updating event:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update event",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: error.message || "Failed to update event", variant: "destructive" });
     }
   };
 
   const handleRegister = async (eventId: string) => {
     const event = events.find(e => e._id === eventId);
     if (!event) return;
-
     const isRegistered = event.attendees.some((a: any) => a.userId === session?.user?.id);
-    
     if (isRegistered) {
       try {
         const response = await fetch(`/api/events/${eventId}/register`, {
@@ -206,22 +163,13 @@ export default function EventsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: session?.user?.id })
         });
-
         const data = await response.json();
-
         if (data.success) {
-          toast({
-            title: "Success",
-            description: "Unregistered from event"
-          });
+          toast({ title: "Success", description: "Unregistered from event" });
           fetchEvents();
         }
-      } catch (error) {
-        console.error("Error unregistering:", error);
-        toast({
-          title: "Error",
-          description: "Failed to unregister"
-        });
+      } catch {
+        toast({ title: "Error", description: "Failed to unregister" });
       }
     } else {
       setSelectedEvent(event);
@@ -229,32 +177,27 @@ export default function EventsPage() {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
+  // ← updated to accept secretKey
+  const handleDeleteEvent = async (eventId: string, secretKey: string) => {
     try {
-      const response = await fetch(`/api/events/${eventId}?userId=${session?.user?.id}&userRole=${userRole}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session?.user?.id,
+          userRole,
+          secretKey
+        })
       });
-
       const data = await response.json();
-
       if (data.success) {
-        toast({
-          title: "Success",
-          description: "Event deleted successfully"
-        });
+        toast({ title: "Success", description: "Event deleted successfully" });
         fetchEvents();
       } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to delete event"
-        });
+        toast({ title: "Error", description: data.error || "Failed to delete event", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("Error deleting event:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete event"
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to delete event" });
     }
   };
 
@@ -277,10 +220,7 @@ export default function EventsPage() {
             <option value="organizer">Organizer</option>
             <option value="admin">Admin</option>
           </select>
-          <Button 
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="flex items-center gap-2"
-          >
+          <Button onClick={() => setShowCreateForm(!showCreateForm)} className="flex items-center gap-2">
             <Plus size={18} />
             Create Event
           </Button>
@@ -290,23 +230,18 @@ export default function EventsPage() {
       <Tabs defaultValue="events" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="events">All Events</TabsTrigger>
-          <TabsTrigger value="calendar">
-            <Calendar className="mr-2 h-4 w-4" />
-            Calendar
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Analytics
-          </TabsTrigger>
+          <TabsTrigger value="calendar"><Calendar className="mr-2 h-4 w-4" />Calendar</TabsTrigger>
+          <TabsTrigger value="analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events">
           {showCreateForm && (
             <div className="mb-6">
-              <CreateEventForm 
+              <CreateEventForm
                 onSubmit={handleCreateEvent}
                 onCancel={() => setShowCreateForm(false)}
                 categories={categories}
+                userRole={userRole}
               />
             </div>
           )}
@@ -345,9 +280,7 @@ export default function EventsPage() {
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <Skeleton key={i} className="h-[300px] w-full" />
-              ))}
+              {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-[300px] w-full" />)}
             </div>
           ) : currentEvents.length === 0 ? (
             <div className="text-center py-12 bg-[#F2EDE0] border-2 border-black rounded-xl">
@@ -395,15 +328,9 @@ export default function EventsPage() {
           eventId={selectedEvent._id}
           eventTitle={selectedEvent.title}
           userId={session?.user?.id || ''}
-          onClose={() => {
-            setShowRegistrationModal(false);
-            setSelectedEvent(null);
-          }}
+          onClose={() => { setShowRegistrationModal(false); setSelectedEvent(null); }}
           onSuccess={() => {
-            toast({
-              title: "Success",
-              description: "Registered for event successfully"
-            });
+            toast({ title: "Success", description: "Registered for event successfully" });
             fetchEvents();
           }}
         />

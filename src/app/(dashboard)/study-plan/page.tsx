@@ -10,8 +10,20 @@ import { useSession } from "next-auth/react";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 import { PaginationNav } from "@/components/ui/pagination-nav";
+import { Sparkles, Loader2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const ITEMS_PER_PAGE = 5;
+
+interface RankedPlan {
+  rank: number;
+  subject: string;
+  reason: string;
+  urgency: "high" | "medium" | "low";
+  bestTime: "Morning" | "Afternoon" | "Evening";
+  stressLevel: "High" | "Medium" | "Low";
+}
 
 export default function StudyPlanPage() {
   const { data: session } = useSession();
@@ -19,167 +31,94 @@ export default function StudyPlanPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isSorting, setIsSorting] = useState(false);
+  const [rankedPlans, setRankedPlans] = useState<RankedPlan[] | null>(null);
   const { toast } = useToast();
 
   const fetchPlans = useCallback(async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-    
+    if (!session?.user?.id) { setLoading(false); return; }
     try {
       setLoading(true);
-      console.log('🔄 Fetching study plans for user:', session.user.id);
-      
       const data = await apiClient.getStudyPlan(session.user.id);
-      
-      if (data.error) {
-        console.error("API returned error:", data.error);
-        toast({
-          variant: "error",
-          title: "Error",
-          description: "Failed to fetch study plans. Please try again."
-        });
-        setStoredPlans([]);
-        return;
-      }
-      
+      if (data.error) { setStoredPlans([]); return; }
       if (data.plans && Array.isArray(data.plans)) {
-        // Sort plans by _id as a fallback for creation time
-        const sortedPlans = data.plans.sort((a: StudyPlan, b: StudyPlan) => 
-          b._id.localeCompare(a._id)
-        );
-        console.log('✅ Successfully fetched plans:', sortedPlans.length);
+        const sortedPlans = data.plans.sort((a: StudyPlan, b: StudyPlan) => b._id.localeCompare(a._id));
         setStoredPlans(sortedPlans);
-      } else {
-        console.error("Invalid plans data structure:", data);
-        setStoredPlans([]);
-      }
-    } catch (error) {
-      console.error("Error fetching stored plans:", error);
-      toast({
-        variant: "error",
-        title: "Error",
-        description: "Failed to fetch study plans. Please try again."
-      });
-      setStoredPlans([]);
-    } finally {
-      setLoading(false);
-    }
+      } else { setStoredPlans([]); }
+    } catch { setStoredPlans([]); }
+    finally { setLoading(false); }
   }, [session?.user?.id, toast]);
 
-  useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
+  useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
-  const handlePlanDelete = async (planId: string) => {
-    if (!planId) {
-      console.error('❌ No plan ID provided');
+  const handleAISort = async () => {
+    if (storedPlans.length === 0) {
+      toast({ title: "No plans", description: "Create some study plans first!" });
       return;
     }
-
-    // Prevent multiple delete requests
-    if (isDeleting === planId) {
-      console.log('⏳ Delete already in progress for plan:', planId);
-      return;
-    }
-
-    console.log('🗑️ Starting delete for plan:', planId);
-    setIsDeleting(planId);
-
+    setIsSorting(true);
+    setRankedPlans(null);
     try {
-      // Call the API to delete the study plan
-      const response = await fetch(`/api/study-plan/${planId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch('/api/ai-sort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plans: storedPlans }),
       });
-
-      console.log('📡 Delete response status:', response.status);
-
-      // Parse the response
-      let data;
-      try {
-        data = await response.json();
-        console.log('📦 Delete response data:', data);
-      } catch (parseError) {
-        console.error('❌ Failed to parse response:', parseError);
-        throw new Error('Invalid response from server');
-      }
-
-      // Check if the request was successful
-      if (!response.ok) {
-        console.error('❌ Delete request failed:', data);
-        throw new Error(data.error || data.message || 'Failed to delete plan');
-      }
-
-      // Verify the deletion was successful
-      if (data.success) {
-        console.log('✅ Plan deleted successfully, updating UI');
-        
-        // Optimistically update the UI by removing the plan from state
-        setStoredPlans(prevPlans => {
-          const updatedPlans = prevPlans.filter(plan => plan._id !== planId);
-          console.log('📊 Plans after deletion:', updatedPlans.length);
-          return updatedPlans;
-        });
-        
-        // Adjust current page if necessary
-        const newTotalPages = Math.ceil((storedPlans.length - 1) / ITEMS_PER_PAGE);
-        if (currentPage > newTotalPages && newTotalPages > 0) {
-          setCurrentPage(newTotalPages);
-        }
-        
-        toast({
-          variant: "default",
-          title: "Success",
-          description: data.message || "Study plan deleted successfully."
-        });
-      } else {
-        throw new Error(data.error || data.message || 'Failed to delete plan');
-      }
-    } catch (error: unknown) {
-      console.error("❌ Error in handlePlanDelete:", error);
-      
-      // Type-safe error message extraction
-      let errorMessage = "Failed to delete study plan. Please try again.";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && 'message' in error) {
-        errorMessage = String(error.message);
-      }
-      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Sorting failed');
+      setRankedPlans(data.ranked);
+    } catch (err) {
       toast({
         variant: "error",
-        title: "Error",
-        description: errorMessage
+        title: "Sort Failed",
+        description: err instanceof Error ? err.message : "Could not sort plans",
       });
-      
-      // Optionally refresh the plans list to ensure UI is in sync
-      console.log('🔄 Refreshing plans after error');
-      await fetchPlans();
     } finally {
-      setIsDeleting(null);
+      setIsSorting(false);
     }
   };
 
-  // Pagination calculations
+  const handlePlanDelete = async (planId: string) => {
+    if (!planId || isDeleting === planId) return;
+    setIsDeleting(planId);
+    try {
+      const response = await fetch(`/api/study-plan/${planId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to delete plan');
+      if (data.success) {
+        setStoredPlans(prev => prev.filter(p => p._id !== planId));
+        setRankedPlans(null);
+        const newTotalPages = Math.ceil((storedPlans.length - 1) / ITEMS_PER_PAGE);
+        if (currentPage > newTotalPages && newTotalPages > 0) setCurrentPage(newTotalPages);
+        toast({ title: "Deleted", description: "Study plan removed." });
+      }
+    } catch (error) {
+      toast({ variant: "error", title: "Error", description: error instanceof Error ? error.message : "Failed to delete" });
+      await fetchPlans();
+    } finally { setIsDeleting(null); }
+  };
+
+  const urgencyColor = (urgency: string) => {
+    if (urgency === "high") return "bg-red-100 border-red-300 text-red-800";
+    if (urgency === "medium") return "bg-yellow-100 border-yellow-300 text-yellow-800";
+    return "bg-green-100 border-green-300 text-green-800";
+  };
+
   const totalPages = Math.ceil(storedPlans.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentPlans = storedPlans.slice(startIndex, endIndex);
+  const currentPlans = storedPlans.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-0">Study Plan Generator</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-xs sm:text-sm text-gray-600">Create and manage your study plans</span>
-        </div>
+        <span className="text-xs sm:text-sm text-gray-600">Create and manage your study plans</span>
       </div>
-      
+
+      {/* Form */}
       <div className="w-full max-w-full sm:max-w-10xl">
         <StudyPlanForm onPlanCreated={fetchPlans} />
       </div>
@@ -187,8 +126,78 @@ export default function StudyPlanPage() {
       {/* Stored Plans Section */}
       <div id="stored-plans" className="mt-8 sm:mt-12">
         <Separator className="my-6 sm:my-8" />
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Your Study Plans</h2>
-        
+
+        {/* Section header with AI Sort button */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold">Your Study Plans</h2>
+          {storedPlans.length > 1 && (
+            <Button
+              onClick={handleAISort}
+              disabled={isSorting}
+              className="bg-teal-500 hover:bg-teal-600 text-white font-semibold px-5 py-2 rounded-xl shadow"
+            >
+              {isSorting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" />AI Priority Sort</>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* AI Ranked Result Panel */}
+        {rankedPlans && (
+          <div className="mb-6 p-4 sm:p-6 rounded-2xl border-2 border-teal-200 bg-teal-50 relative">
+            <button
+              onClick={() => setRankedPlans(null)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-teal-600" />
+              <h3 className="text-lg font-bold text-teal-800">AI Recommended Study Order</h3>
+            </div>
+            <div className="space-y-3">
+              {rankedPlans.map((item) => (
+                <div
+                  key={item.rank}
+                  className={`flex items-start gap-3 p-3 rounded-xl border ${urgencyColor(item.urgency)}`}
+                >
+                  <div className="text-2xl font-black min-w-[2rem] text-center">
+                    #{item.rank}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-base">{item.subject}</span>
+                      <Badge className={`text-xs capitalize ${
+                        item.urgency === "high" ? "bg-red-500" :
+                        item.urgency === "medium" ? "bg-yellow-500" : "bg-green-500"
+                      } text-white`}>
+                        {item.urgency} priority
+                      </Badge>
+                      <Badge className={`text-xs ${
+                        item.stressLevel === "High" ? "bg-orange-500" :
+                        item.stressLevel === "Medium" ? "bg-blue-400" : "bg-gray-400"
+                      } text-white`}>
+                        {item.stressLevel} stress
+                      </Badge>
+                      <Badge className="text-xs bg-indigo-400 text-white">
+                        ⏰ {item.bestTime}
+                      </Badge>
+                    </div>
+                    <p className="text-sm mt-1 opacity-80">{item.reason}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-teal-600 mt-3 opacity-70">
+              ✨ Based on exam dates, stress score, subject difficulty & best study time
+            </p>
+          </div>
+        )}
+
+        {/* Plans List */}
         {loading ? (
           <div className="space-y-4 sm:space-y-6">
             <Skeleton className="h-[150px] sm:h-[200px] w-full" />

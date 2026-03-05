@@ -2,16 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Event from '@/server/models/event';
 
-// Database connection helper
 const connectDB = async () => {
-  if (mongoose.connections[0].readyState) {
-    return;
-  }
-  
-  if (!process.env.MONGODB_URI) {
-    throw new Error('MONGODB_URI is not defined');
-  }
-  
+  if (mongoose.connections[0].readyState) return;
+  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not defined');
   try {
     await mongoose.connect(process.env.MONGODB_URI);
   } catch (error) {
@@ -26,17 +19,16 @@ export async function DELETE(
 ) {
   try {
     await connectDB();
-
-    // Await params (Next.js 15 requirement)
     const { eventId } = await params;
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const userRole = searchParams.get('userRole');
+    // Get secretKey from request body
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (e) {}
 
-    console.log('🗑️ Delete event request:', { eventId, userId, userRole });
+    const { userId, userRole, secretKey } = body;
 
-    // Validate eventId
     if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid event ID' },
@@ -44,9 +36,7 @@ export async function DELETE(
       );
     }
 
-    // Find the event
     const event = await Event.findById(eventId);
-
     if (!event) {
       return NextResponse.json(
         { success: false, error: 'Event not found' },
@@ -54,10 +44,25 @@ export async function DELETE(
       );
     }
 
+    // Validate secret key
+    if (!secretKey) {
+      return NextResponse.json(
+        { success: false, error: 'Secret key required to delete event' },
+        { status: 401 }
+      );
+    }
+
+    const validKey = event.secretKey || process.env.ADMIN_PASSKEY;
+    if (secretKey !== validKey) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid secret key' },
+        { status: 403 }
+      );
+    }
+
     // Check permissions
     const isAdmin = userRole === 'admin';
     const isCreator = event.created_by?.toString() === userId;
-
     if (!isAdmin && !isCreator) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized to delete this event' },
@@ -65,10 +70,7 @@ export async function DELETE(
       );
     }
 
-    // Delete the event
     await Event.findByIdAndDelete(eventId);
-
-    console.log('✅ Event deleted successfully:', eventId);
 
     return NextResponse.json({
       success: true,
@@ -76,7 +78,7 @@ export async function DELETE(
     });
 
   } catch (error: any) {
-    console.error('❌ Error deleting event:', error);
+    console.error('Error deleting event:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to delete event' },
       { status: 500 }

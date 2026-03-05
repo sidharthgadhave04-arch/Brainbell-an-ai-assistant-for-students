@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar, MapPin, Users, CheckCircle, XCircle, Trash2, Star } from "lucide-react";
+import { Calendar, MapPin, Users, CheckCircle, XCircle, Trash2, Star, Clock } from "lucide-react";
 import { useState } from "react";
 import EventFeedback from "./EventFeedback";
 
@@ -32,20 +32,21 @@ interface EventCardProps {
   currentUserId: string;
   onStatusUpdate: (eventId: string, status: 'approved' | 'rejected', passkey?: string) => void;
   onRegister: (eventId: string) => void;
-  onDelete: (eventId: string) => void;
+  onDelete: (eventId: string, secretKey: string) => void;
 }
 
-export default function EventCard({ 
-  event, 
-  userRole, 
+export default function EventCard({
+  event,
+  userRole,
   currentUserId,
-  onStatusUpdate, 
+  onStatusUpdate,
   onRegister,
-  onDelete 
+  onDelete
 }: EventCardProps) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const isRegistered = event.attendees.includes(currentUserId);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isRegistered = Array.isArray(event.attendees) && event.attendees.includes(currentUserId);
   const isCreator = event.created_by === currentUserId;
   const isPastEvent = new Date(event.date) < new Date();
 
@@ -60,16 +61,23 @@ export default function EventCard({
     : null;
 
   const handleReject = () => {
-    const passkey = prompt("Enter admin passkey to reject this event:");
-    
+    const passkey = prompt("Enter the secret key from your email to reject this event:");
     if (!passkey) {
-      alert("Rejection cancelled - passkey required");
+      alert("Rejection cancelled - key required");
       return;
     }
-    
-    // Pass the passkey to the onStatusUpdate function
     onStatusUpdate(event._id, 'rejected', passkey);
     setShowRejectDialog(false);
+  };
+
+  const handleDelete = () => {
+    const secretKey = prompt("Enter the secret key from your email to delete this event:");
+    if (!secretKey) {
+      alert("Deletion cancelled - key required");
+      return;
+    }
+    onDelete(event._id, secretKey);
+    setShowDeleteDialog(false);
   };
 
   return (
@@ -94,11 +102,8 @@ export default function EventCard({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <Calendar size={16} className="text-gray-500" />
-            <span>{new Date(event.date).toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
+            <span>{new Date(event.date).toLocaleDateString('en-US', {
+              weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
             })}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -118,7 +123,9 @@ export default function EventCard({
         </div>
 
         <div className="flex flex-col gap-2 pt-2">
-          {event.status === 'approved' && (
+
+          {/* Register — only approved events, students and organizers only */}
+          {event.status === 'approved' && userRole !== 'admin' && (
             <>
               <Button
                 onClick={() => onRegister(event._id)}
@@ -139,7 +146,24 @@ export default function EventCard({
               )}
             </>
           )}
-          
+
+          {/* Pending notice for students/organizers */}
+          {event.status === 'pending' && userRole !== 'admin' && (
+            <div className="flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+              <Clock size={14} />
+              <span>Awaiting admin approval</span>
+            </div>
+          )}
+
+          {/* Rejected notice */}
+          {event.status === 'rejected' && userRole !== 'admin' && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <XCircle size={14} />
+              <span>This event was not approved</span>
+            </div>
+          )}
+
+          {/* Admin approve/reject */}
           {userRole === 'admin' && event.status === 'pending' && (
             <div className="flex gap-2">
               <Button
@@ -149,14 +173,10 @@ export default function EventCard({
                 <CheckCircle size={16} className="mr-1" />
                 Approve
               </Button>
-              
-              {/* Reject button with passkey confirmation */}
+
               <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
                 <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                  >
+                  <Button variant="destructive" className="flex-1">
                     <XCircle size={16} className="mr-1" />
                     Reject
                   </Button>
@@ -165,15 +185,12 @@ export default function EventCard({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Reject Event</AlertDialogTitle>
                     <AlertDialogDescription>
-                      You will be prompted to enter your admin passkey to confirm rejection.
+                      You will be prompted to enter the secret key sent to your email to confirm rejection.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleReject}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
+                    <AlertDialogAction onClick={handleReject} className="bg-red-500 hover:bg-red-600">
                       Continue
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -182,8 +199,9 @@ export default function EventCard({
             </div>
           )}
 
-          {(isCreator || userRole === 'admin') && (
-            <AlertDialog>
+          {/* Delete — admin and organizer only, NOT student */}
+          {(isCreator || userRole === 'admin') && userRole !== 'student' && (
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="w-full border-2 border-red-500 text-red-500 hover:bg-red-50">
                   <Trash2 size={16} className="mr-2" />
@@ -192,15 +210,15 @@ export default function EventCard({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete Event</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete this event.
+                    You will be prompted to enter the secret key sent to your email. This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(event._id)} className="bg-red-500 hover:bg-red-600">
-                    Delete
+                  <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                    Continue
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

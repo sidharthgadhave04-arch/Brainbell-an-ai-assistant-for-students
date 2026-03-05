@@ -93,7 +93,6 @@ export function SignUpForm() {
           description: "Account created successfully",
         });
 
-        // Sign in automatically after successful registration
         const signInRes = await signIn("credentials", {
           email,
           password,
@@ -120,13 +119,14 @@ export function SignUpForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
       <div>
         <Input
           type="text"
           name="name"
           placeholder="Name"
           required
+          autoComplete="off"
           className={`w-full ${errors.name ? 'border-red-500' : ''}`}
         />
         {errors.name && (
@@ -139,6 +139,7 @@ export function SignUpForm() {
           name="email"
           placeholder="Email"
           required
+          autoComplete="off"
           className={`w-full ${errors.email ? 'border-red-500' : ''}`}
         />
         {errors.email && (
@@ -151,6 +152,7 @@ export function SignUpForm() {
           name="password"
           placeholder="Password"
           required
+          autoComplete="new-password"
           className={`w-full ${errors.password ? 'border-red-500' : ''}`}
         />
         {errors.password && (
@@ -164,6 +166,7 @@ export function SignUpForm() {
         <select
           name="branch"
           required
+          autoComplete="off"
           className={`w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.branch ? 'border-red-500' : ''}`}
           defaultValue=""
         >
@@ -182,6 +185,7 @@ export function SignUpForm() {
         <select
           name="division"
           required
+          autoComplete="off"
           className={`w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.division ? 'border-red-500' : ''}`}
           defaultValue=""
         >

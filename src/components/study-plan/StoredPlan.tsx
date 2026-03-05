@@ -1,3 +1,4 @@
+'use client';
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,19 +47,9 @@ export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanPro
 
   const handleDelete = async () => {
     try {
-      console.log('🗑️ StoredPlan: Initiating delete for plan:', plan._id);
-      
-      // Call the onDelete function passed from parent
       await onDelete(plan._id);
-      
-      // Close the dialog after successful deletion
       setIsDialogOpen(false);
-      
-      console.log('✅ StoredPlan: Delete completed successfully');
     } catch (error) {
-      console.error('❌ StoredPlan: Delete failed:', error);
-      
-      // The parent component will handle the toast, but we'll keep this as fallback
       toast({
         variant: "error",
         title: "Error",
@@ -82,18 +73,16 @@ export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanPro
             </Badge>
           </div>
         </div>
+
         <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <AlertDialogTrigger asChild>
-            <Button 
-              variant="destructive" 
-              disabled={isDeleting} 
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
               className="w-full sm:w-auto hover:bg-red-500"
             >
               {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
               ) : (
                 'Delete Plan'
               )}
@@ -107,22 +96,13 @@ export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanPro
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-              <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleDelete} 
+              <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
                 disabled={isDeleting}
-                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
               >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
+                {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : 'Delete'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -146,7 +126,6 @@ export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanPro
                       ))}
                     </ul>
                   </div>
-
                   <div>
                     <h4 className="font-semibold mb-2">Daily Tasks:</h4>
                     {weekPlan.dailyTasks?.map((day, dayIdx) => (
@@ -166,9 +145,7 @@ export function StoredPlan({ plan, onDelete, isDeleting = false }: StoredPlanPro
           ))}
 
           <AccordionItem value="recommendations">
-            <AccordionTrigger className="text-base sm:text-lg font-semibold">
-              Recommendations
-            </AccordionTrigger>
+            <AccordionTrigger className="text-base sm:text-lg font-semibold">Recommendations</AccordionTrigger>
             <AccordionContent>
               <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm sm:text-base">
                 {plan.recommendations?.map((rec, index) => (
